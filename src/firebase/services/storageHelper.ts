@@ -47,9 +47,6 @@ export const initLocalStorage = () => {
   if (!localStorage.getItem(STORAGE_KEYS.PHOTOS)) {
     localStorage.setItem(STORAGE_KEYS.PHOTOS, JSON.stringify(INITIAL_PHOTOS));
   }
-  if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(INITIAL_USERS[0])); // Default to Admin
-  }
 };
 
 export const getFromStorage = <T>(key: string, defaultVal: T): T => {

@@ -32,9 +32,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Find latest updated version of current user
       const found = users.find(u => u.uid === current.uid) || current;
       setCurrentUser(found);
-    } else if (users.length > 0) {
-      setCurrentUser(users[0]); // Default to first user (Admin)
-      authService.setCurrentUser(users[0]);
+    } else {
+      setCurrentUser(null);
     }
     setIsLoading(false);
   };
