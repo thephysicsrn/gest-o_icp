@@ -37,14 +37,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const unsubscribe = authService.onAuthChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        const profile = await authService.getUserProfile(firebaseUser.uid);
-        setCurrentUser(profile);
-      } else {
-        setCurrentUser(null);
+      try {
+        if (firebaseUser) {
+          const profile = await authService.getUserProfile(firebaseUser.uid);
+          setCurrentUser(profile);
+        } else {
+          setCurrentUser(null);
+        }
+        await loadAllUsers();
+      } catch (err) {
+        console.error('Erro ao inicializar contexto de autenticação:', err);
+      } finally {
+        setIsLoading(false);
       }
-      await loadAllUsers();
-      setIsLoading(false);
     });
 
     return () => unsubscribe();
