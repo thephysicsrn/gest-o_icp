@@ -1,54 +1,100 @@
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  query,
+  getDocs,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { auth, db } from '../config';
 import { UserProfile, UserRole, SesiUnit } from '../../types';
-import { STORAGE_KEYS, getFromStorage, saveToStorage } from './storageHelper';
-import { INITIAL_USERS } from '../seedData';
+
+const usersCol = () => collection(db, 'users');
+
+const toUserProfile = (data: any, uid: string): UserProfile => ({
+  uid,
+  name: data.name ?? '',
+  email: data.email ?? '',
+  role: data.role as UserRole,
+  unit: data.unit as SesiUnit,
+  matricula: data.matricula ?? '',
+  phone: data.phone ?? '',
+  areaOrGrade: data.areaOrGrade ?? '',
+  avatarUrl: data.avatarUrl ?? '',
+  createdAt: data.createdAt ?? new Date().toISOString(),
+});
 
 export const authService = {
   getUsers: async (): Promise<UserProfile[]> => {
-    return getFromStorage<UserProfile[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+    const snap = await getDocs(query(usersCol()));
+    return snap.docs.map(d => toUserProfile(d.data(), d.id));
   },
 
-  getCurrentUser: (): UserProfile | null => {
-    return getFromStorage<UserProfile | null>(STORAGE_KEYS.CURRENT_USER, null);
+  getUserProfile: async (uid: string): Promise<UserProfile | null> => {
+    const ref = doc(db, 'users', uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    return toUserProfile(snap.data(), uid);
   },
 
-  setCurrentUser: (user: UserProfile | null): void => {
-    saveToStorage(STORAGE_KEYS.CURRENT_USER, user);
-  },
-
-  login: async (email: string, _password?: string): Promise<UserProfile> => {
-    const users = await authService.getUsers();
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    
-    if (!user) {
-      throw new Error('Usuário não encontrado. Verifique o e-mail ou contate o administrador.');
+  login: async (email: string, password?: string): Promise<UserProfile> => {
+    const pwd = password || 'sesi@123456';
+    const cred = await signInWithEmailAndPassword(auth, email, pwd);
+    const profile = await authService.getUserProfile(cred.user.uid);
+    if (!profile) {
+      await signOut(auth);
+      throw new Error('Usuário não encontrado no sistema escolar.');
     }
-
-    authService.setCurrentUser(user);
-    return user;
+    return profile;
   },
 
   logout: async (): Promise<void> => {
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    await signOut(auth);
+  },
+
+  onAuthChanged: (callback: (user: FirebaseUser | null) => void) => {
+    return onAuthStateChanged(auth, callback);
   },
 
   createUser: async (userData: {
     name: string;
     email: string;
+    password?: string;
     role: UserRole;
     unit: SesiUnit;
     matricula: string;
     phone?: string;
     areaOrGrade?: string;
   }): Promise<UserProfile> => {
-    const users = await authService.getUsers();
-    
-    // Check if email already exists
-    if (users.some(u => u.email.toLowerCase() === userData.email.toLowerCase())) {
-      throw new Error('Já existe um usuário cadastrado com este e-mail.');
+    const password = userData.password || 'sesi@123456';
+    let uid = '';
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, userData.email, password);
+      await updateProfile(cred.user, { displayName: userData.name });
+      uid = cred.user.uid;
+    } catch (err: any) {
+      if (err.code === 'auth/email-already-in-use') {
+        const cred = await signInWithEmailAndPassword(auth, userData.email, password);
+        uid = cred.user.uid;
+      } else {
+        // Fallback: se não conseguir criar no auth imediatamente, cria ID único
+        uid = 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      }
     }
 
-    const newUser: UserProfile = {
-      uid: `usr-${Date.now()}`,
+    const newProfile: UserProfile = {
+      uid,
       name: userData.name,
       email: userData.email,
       role: userData.role,
@@ -59,31 +105,25 @@ export const authService = {
       createdAt: new Date().toISOString(),
     };
 
-    users.push(newUser);
-    saveToStorage(STORAGE_KEYS.USERS, users);
-    return newUser;
+    await setDoc(doc(db, 'users', uid), {
+      ...newProfile,
+      createdAt: serverTimestamp(),
+    });
+
+    return newProfile;
   },
 
   updateUser: async (uid: string, updates: Partial<UserProfile>): Promise<UserProfile> => {
-    const users = await authService.getUsers();
-    const index = users.findIndex(u => u.uid === uid);
-    if (index === -1) throw new Error('Usuário não encontrado.');
-
-    users[index] = { ...users[index], ...updates };
-    saveToStorage(STORAGE_KEYS.USERS, users);
-
-    // If updating current user, update session as well
-    const current = authService.getCurrentUser();
-    if (current && current.uid === uid) {
-      authService.setCurrentUser(users[index]);
-    }
-
-    return users[index];
+    const ref = doc(db, 'users', uid);
+    await updateDoc(ref, updates);
+    const snap = await getDoc(ref);
+    return toUserProfile(snap.data()!, uid);
   },
 
   deleteUser: async (uid: string): Promise<void> => {
-    let users = await authService.getUsers();
-    users = users.filter(u => u.uid !== uid);
-    saveToStorage(STORAGE_KEYS.USERS, users);
-  }
+    await deleteDoc(doc(db, 'users', uid));
+  },
+
+  getCurrentUser: (): UserProfile | null => null,
+  setCurrentUser: (_user: UserProfile | null): void => {},
 };

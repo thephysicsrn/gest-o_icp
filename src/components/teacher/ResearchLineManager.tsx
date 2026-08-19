@@ -147,13 +147,9 @@ export const ResearchLineManager: React.FC<Props> = ({
   };
 
   const handleSaveGroupInfo = async () => {
-    await groupService.saveGroup({
-      id: group.id,
+    await groupService.updateGroup(group.id, {
       title: groupTitle,
       description: groupDesc,
-      unit: group.unit,
-      leaderTeacherId: group.leaderTeacherId,
-      leaderTeacherName: group.leaderTeacherName,
     });
     setIsEditingGroup(false);
     await onRefresh();

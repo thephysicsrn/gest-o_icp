@@ -1,57 +1,58 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { UserProfile, UserRole } from '../types';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService } from '../firebase/services/authService';
-import { initLocalStorage } from '../firebase/services/storageHelper';
+import { UserProfile } from '../types';
 
 interface AuthContextType {
   currentUser: UserProfile | null;
-  role: UserRole | null;
+  allUsers: UserProfile[];
   isLoading: boolean;
-  login: (email: string, password?: string) => Promise<UserProfile>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   switchUser: (user: UserProfile) => void;
-  refreshCurrentUser: () => Promise<void>;
-  allUsers: UserProfile[];
+  refreshUsers: () => Promise<void>;
   reloadUsers: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+};
+
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadData = async () => {
-    initLocalStorage();
-    const users = await authService.getUsers();
-    setAllUsers(users);
-    
-    const current = authService.getCurrentUser();
-    if (current) {
-      // Find latest updated version of current user
-      const found = users.find(u => u.uid === current.uid) || current;
-      setCurrentUser(found);
-    } else {
-      setCurrentUser(null);
+  const loadAllUsers = async () => {
+    try {
+      const users = await authService.getUsers();
+      setAllUsers(users);
+    } catch (err) {
+      console.warn('Erro ao carregar usuários:', err);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
-    loadData();
+    const unsubscribe = authService.onAuthChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        const profile = await authService.getUserProfile(firebaseUser.uid);
+        setCurrentUser(profile);
+      } else {
+        setCurrentUser(null);
+      }
+      await loadAllUsers();
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password?: string) => {
-    setIsLoading(true);
-    try {
-      const user = await authService.login(email, password);
-      setCurrentUser(user);
-      await reloadUsers();
-      return user;
-    } finally {
-      setIsLoading(false);
-    }
+  const login = async (email: string, password: string) => {
+    const profile = await authService.login(email, password);
+    setCurrentUser(profile);
   };
 
   const logout = async () => {
@@ -60,47 +61,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const switchUser = (user: UserProfile) => {
-    authService.setCurrentUser(user);
     setCurrentUser(user);
   };
 
-  const refreshCurrentUser = async () => {
-    const users = await authService.getUsers();
-    setAllUsers(users);
-    if (currentUser) {
-      const updated = users.find(u => u.uid === currentUser.uid);
-      if (updated) setCurrentUser(updated);
-    }
-  };
-
-  const reloadUsers = async () => {
-    const users = await authService.getUsers();
-    setAllUsers(users);
+  const refreshUsers = async () => {
+    await loadAllUsers();
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        currentUser,
-        role: currentUser?.role || null,
-        isLoading,
-        login,
-        logout,
-        switchUser,
-        refreshCurrentUser,
-        allUsers,
-        reloadUsers,
-      }}
-    >
+    <AuthContext.Provider value={{
+      currentUser,
+      allUsers,
+      isLoading,
+      login,
+      logout,
+      switchUser,
+      refreshUsers,
+      reloadUsers: refreshUsers
+    }}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
-  }
-  return context;
 };

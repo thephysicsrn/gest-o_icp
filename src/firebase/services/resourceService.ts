@@ -1,63 +1,61 @@
-import { LineResource, ResourceType } from '../../types';
-import { STORAGE_KEYS, getFromStorage, saveToStorage } from './storageHelper';
-import { INITIAL_RESOURCES } from '../seedData';
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
+import { db } from '../config';
+import { LineResource } from '../../types';
+
+const toResource = (data: any, id: string): LineResource => ({
+  id,
+  groupId: data.groupId ?? '',
+  lineId: data.lineId ?? '',
+  lineTitle: data.lineTitle,
+  type: data.type ?? 'link',
+  title: data.title ?? '',
+  url: data.url ?? '',
+  fileName: data.fileName,
+  fileSize: data.fileSize,
+  fileType: data.fileType,
+  description: data.description,
+  uploadedBy: data.uploadedBy ?? '',
+  uploadedByName: data.uploadedByName ?? '',
+  createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : (data.createdAt ?? new Date().toISOString()),
+});
 
 export const resourceService = {
   getResourcesByLine: async (lineId: string): Promise<LineResource[]> => {
-    const resources = getFromStorage<LineResource[]>(STORAGE_KEYS.RESOURCES, INITIAL_RESOURCES);
-    return resources
-      .filter(r => r.lineId === lineId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const q = query(collection(db, 'resources'), where('lineId', '==', lineId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => toResource(d.data(), d.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 
-  getAllResourcesByGroup: async (groupId: string): Promise<LineResource[]> => {
-    const resources = getFromStorage<LineResource[]>(STORAGE_KEYS.RESOURCES, INITIAL_RESOURCES);
-    return resources
-      .filter(r => r.groupId === groupId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  saveResource: async (data: Omit<LineResource, 'id' | 'createdAt'>): Promise<LineResource> => {
+    const ref = await addDoc(collection(db, 'resources'), {
+      ...data,
+      createdAt: serverTimestamp(),
+    });
+    const snap = await getDoc(ref);
+    return toResource(snap.data()!, ref.id);
   },
 
-  createResource: async (resourceData: {
-    groupId: string;
-    lineId: string;
-    lineTitle?: string;
-    type: ResourceType;
-    title: string;
-    url: string;
-    fileName?: string;
-    fileSize?: string;
-    fileType?: string;
-    description?: string;
-    uploadedBy: string;
-    uploadedByName: string;
-  }): Promise<LineResource> => {
-    const resources = getFromStorage<LineResource[]>(STORAGE_KEYS.RESOURCES, INITIAL_RESOURCES);
-
-    const newResource: LineResource = {
-      id: `res-${Date.now()}`,
-      groupId: resourceData.groupId,
-      lineId: resourceData.lineId,
-      lineTitle: resourceData.lineTitle,
-      type: resourceData.type,
-      title: resourceData.title,
-      url: resourceData.url,
-      fileName: resourceData.fileName,
-      fileSize: resourceData.fileSize,
-      fileType: resourceData.fileType,
-      description: resourceData.description,
-      uploadedBy: resourceData.uploadedBy,
-      uploadedByName: resourceData.uploadedByName,
-      createdAt: new Date().toISOString()
-    };
-
-    resources.unshift(newResource);
-    saveToStorage(STORAGE_KEYS.RESOURCES, resources);
-    return newResource;
+  createResource: async (data: Omit<LineResource, 'id' | 'createdAt'>): Promise<LineResource> => {
+    return resourceService.saveResource(data);
   },
 
-  deleteResource: async (resourceId: string): Promise<void> => {
-    let resources = getFromStorage<LineResource[]>(STORAGE_KEYS.RESOURCES, INITIAL_RESOURCES);
-    resources = resources.filter(r => r.id !== resourceId);
-    saveToStorage(STORAGE_KEYS.RESOURCES, resources);
-  }
+  updateResource: async (id: string, data: Partial<LineResource>): Promise<void> => {
+    await updateDoc(doc(db, 'resources', id), data);
+  },
+
+  deleteResource: async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, 'resources', id));
+  },
 };

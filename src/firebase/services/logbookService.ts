@@ -1,92 +1,88 @@
-import { LogbookEntry, SupervisorValidationStatus, ResearchStage } from '../../types';
-import { STORAGE_KEYS, getFromStorage, saveToStorage } from './storageHelper';
-import { INITIAL_LOGBOOKS } from '../seedData';
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
+import { db } from '../config';
+import { LogbookEntry, SupervisorValidationStatus } from '../../types';
+
+const toEntry = (data: any, id: string): LogbookEntry => ({
+  id,
+  studentId: data.studentId ?? '',
+  studentName: data.studentName ?? '',
+  lineId: data.lineId ?? '',
+  lineTitle: data.lineTitle ?? '',
+  groupId: data.groupId ?? '',
+  date: data.date ?? '',
+  hoursWorked: data.hoursWorked ?? 0,
+  stage: data.stage,
+  objectives: data.objectives ?? '',
+  methodology: data.methodology ?? '',
+  activities: data.activities ?? '',
+  results: data.results ?? '',
+  difficulties: data.difficulties ?? '',
+  nextSteps: data.nextSteps ?? '',
+  supervisorStatus: data.supervisorStatus ?? 'pending',
+  supervisorComment: data.supervisorComment,
+  supervisorReviewedAt: data.supervisorReviewedAt instanceof Timestamp ? data.supervisorReviewedAt.toDate().toISOString() : data.supervisorReviewedAt,
+  createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : (data.createdAt ?? new Date().toISOString()),
+});
 
 export const logbookService = {
   getEntriesByStudent: async (studentId: string): Promise<LogbookEntry[]> => {
-    const logbooks = getFromStorage<LogbookEntry[]>(STORAGE_KEYS.LOGBOOKS, INITIAL_LOGBOOKS);
-    return logbooks
-      .filter(l => l.studentId === studentId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const q = query(collection(db, 'logbooks'), where('studentId', '==', studentId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => toEntry(d.data(), d.id)).sort((a, b) => b.date.localeCompare(a.date));
   },
 
   getEntriesByGroup: async (groupId: string): Promise<LogbookEntry[]> => {
-    const logbooks = getFromStorage<LogbookEntry[]>(STORAGE_KEYS.LOGBOOKS, INITIAL_LOGBOOKS);
-    return logbooks
-      .filter(l => l.groupId === groupId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const q = query(collection(db, 'logbooks'), where('groupId', '==', groupId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => toEntry(d.data(), d.id)).sort((a, b) => b.date.localeCompare(a.date));
   },
 
   getEntriesByLine: async (lineId: string): Promise<LogbookEntry[]> => {
-    const logbooks = getFromStorage<LogbookEntry[]>(STORAGE_KEYS.LOGBOOKS, INITIAL_LOGBOOKS);
-    return logbooks
-      .filter(l => l.lineId === lineId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const q = query(collection(db, 'logbooks'), where('lineId', '==', lineId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => toEntry(d.data(), d.id)).sort((a, b) => b.date.localeCompare(a.date));
   },
 
-  createEntry: async (entryData: {
-    studentId: string;
-    studentName: string;
-    lineId: string;
-    lineTitle: string;
-    groupId: string;
-    date: string;
-    hoursWorked: number;
-    stage: ResearchStage;
-    objectives: string;
-    methodology: string;
-    activities: string;
-    results: string;
-    difficulties: string;
-    nextSteps: string;
-  }): Promise<LogbookEntry> => {
-    const logbooks = getFromStorage<LogbookEntry[]>(STORAGE_KEYS.LOGBOOKS, INITIAL_LOGBOOKS);
-
-    const newEntry: LogbookEntry = {
-      id: `log-${Date.now()}`,
-      ...entryData,
-      supervisorStatus: 'pending',
-      createdAt: new Date().toISOString()
-    };
-
-    logbooks.unshift(newEntry);
-    saveToStorage(STORAGE_KEYS.LOGBOOKS, logbooks);
-    return newEntry;
+  saveEntry: async (data: Partial<LogbookEntry>): Promise<LogbookEntry> => {
+    const { id, createdAt, ...cleanData } = data;
+    const ref = await addDoc(collection(db, 'logbooks'), {
+      ...cleanData,
+      supervisorStatus: cleanData.supervisorStatus || 'pending',
+      createdAt: serverTimestamp(),
+    });
+    const snap = await getDoc(ref);
+    return toEntry(snap.data()!, ref.id);
   },
 
-  updateEntry: async (
-    id: string, 
-    updates: Partial<LogbookEntry>
-  ): Promise<LogbookEntry> => {
-    const logbooks = getFromStorage<LogbookEntry[]>(STORAGE_KEYS.LOGBOOKS, INITIAL_LOGBOOKS);
-    const index = logbooks.findIndex(l => l.id === id);
-    if (index === -1) throw new Error('Entrada do diário de bordo não encontrada.');
-
-    logbooks[index] = { ...logbooks[index], ...updates };
-    saveToStorage(STORAGE_KEYS.LOGBOOKS, logbooks);
-    return logbooks[index];
+  createEntry: async (data: Partial<LogbookEntry>): Promise<LogbookEntry> => {
+    return logbookService.saveEntry(data);
   },
 
-  reviewEntry: async (
-    id: string, 
-    status: SupervisorValidationStatus, 
-    comment: string
-  ): Promise<LogbookEntry> => {
-    const logbooks = getFromStorage<LogbookEntry[]>(STORAGE_KEYS.LOGBOOKS, INITIAL_LOGBOOKS);
-    const index = logbooks.findIndex(l => l.id === id);
-    if (index === -1) throw new Error('Entrada não encontrada.');
+  updateEntry: async (id: string, data: Partial<LogbookEntry>): Promise<void> => {
+    await updateDoc(doc(db, 'logbooks', id), data);
+  },
 
-    logbooks[index].supervisorStatus = status;
-    logbooks[index].supervisorComment = comment;
-    logbooks[index].supervisorReviewedAt = new Date().toISOString();
-
-    saveToStorage(STORAGE_KEYS.LOGBOOKS, logbooks);
-    return logbooks[index];
+  reviewEntry: async (id: string, status: SupervisorValidationStatus, comment?: string): Promise<void> => {
+    await logbookService.updateEntry(id, {
+      supervisorStatus: status,
+      supervisorComment: comment,
+      supervisorReviewedAt: new Date().toISOString(),
+    });
   },
 
   deleteEntry: async (id: string): Promise<void> => {
-    let logbooks = getFromStorage<LogbookEntry[]>(STORAGE_KEYS.LOGBOOKS, INITIAL_LOGBOOKS);
-    logbooks = logbooks.filter(l => l.id !== id);
-    saveToStorage(STORAGE_KEYS.LOGBOOKS, logbooks);
-  }
+    await deleteDoc(doc(db, 'logbooks', id));
+  },
 };

@@ -1,123 +1,62 @@
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
+import { db } from '../config';
 import { MeetingAttendance, AttendanceRecord } from '../../types';
-import { STORAGE_KEYS, getFromStorage, saveToStorage } from './storageHelper';
-import { INITIAL_MEETINGS } from '../seedData';
+
+const toMeeting = (data: any, id: string): MeetingAttendance => ({
+  id,
+  groupId: data.groupId ?? '',
+  lineId: data.lineId,
+  lineTitle: data.lineTitle,
+  date: data.date ?? '',
+  time: data.time,
+  title: data.title ?? '',
+  agenda: data.agenda ?? '',
+  summary: data.summary,
+  records: data.records ?? [],
+  createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : (data.createdAt ?? new Date().toISOString()),
+});
 
 export const attendanceService = {
   getMeetingsByGroup: async (groupId: string): Promise<MeetingAttendance[]> => {
-    const meetings = getFromStorage<MeetingAttendance[]>(STORAGE_KEYS.MEETINGS, INITIAL_MEETINGS);
-    return meetings
-      .filter(m => m.groupId === groupId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const q = query(collection(db, 'meetings'), where('groupId', '==', groupId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => toMeeting(d.data(), d.id)).sort((a, b) => b.date.localeCompare(a.date));
   },
 
-  getMeetingsByLine: async (lineId: string): Promise<MeetingAttendance[]> => {
-    const meetings = getFromStorage<MeetingAttendance[]>(STORAGE_KEYS.MEETINGS, INITIAL_MEETINGS);
-    return meetings
-      .filter(m => m.lineId === lineId || !m.lineId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  },
-
-  createMeeting: async (meetingData: {
-    groupId: string;
-    lineId?: string;
-    lineTitle?: string;
-    date: string;
-    time?: string;
-    title: string;
-    agenda: string;
-    summary?: string;
-    records: AttendanceRecord[];
-  }): Promise<MeetingAttendance> => {
-    const meetings = getFromStorage<MeetingAttendance[]>(STORAGE_KEYS.MEETINGS, INITIAL_MEETINGS);
-
-    const newMeeting: MeetingAttendance = {
-      id: `meet-${Date.now()}`,
-      groupId: meetingData.groupId,
-      lineId: meetingData.lineId,
-      lineTitle: meetingData.lineTitle,
-      date: meetingData.date,
-      time: meetingData.time || '14:00 - 16:00',
-      title: meetingData.title,
-      agenda: meetingData.agenda,
-      summary: meetingData.summary || '',
-      records: meetingData.records,
-      createdAt: new Date().toISOString()
-    };
-
-    meetings.unshift(newMeeting);
-    saveToStorage(STORAGE_KEYS.MEETINGS, meetings);
-    return newMeeting;
-  },
-
-  updateMeeting: async (
-    meetingId: string, 
-    updates: Partial<MeetingAttendance>
-  ): Promise<MeetingAttendance> => {
-    const meetings = getFromStorage<MeetingAttendance[]>(STORAGE_KEYS.MEETINGS, INITIAL_MEETINGS);
-    const index = meetings.findIndex(m => m.id === meetingId);
-    if (index === -1) throw new Error('Reunião não encontrada.');
-
-    meetings[index] = { ...meetings[index], ...updates };
-    saveToStorage(STORAGE_KEYS.MEETINGS, meetings);
-    return meetings[index];
-  },
-
-  deleteMeeting: async (meetingId: string): Promise<void> => {
-    let meetings = getFromStorage<MeetingAttendance[]>(STORAGE_KEYS.MEETINGS, INITIAL_MEETINGS);
-    meetings = meetings.filter(m => m.id !== meetingId);
-    saveToStorage(STORAGE_KEYS.MEETINGS, meetings);
-  },
-
-  getStudentAttendanceStats: async (studentId: string): Promise<{
-    totalMeetings: number;
-    presentCount: number;
-    justifiedCount: number;
-    absentCount: number;
-    percentage: number;
-    history: {
-      meetingId: string;
-      date: string;
-      title: string;
-      status: 'present' | 'absent_justified' | 'absent';
-      note?: string;
-    }[];
-  }> => {
-    const meetings = getFromStorage<MeetingAttendance[]>(STORAGE_KEYS.MEETINGS, INITIAL_MEETINGS);
-    
-    let total = 0;
-    let present = 0;
-    let justified = 0;
-    let absent = 0;
-    const history: any[] = [];
-
-    meetings.forEach(m => {
-      const studentRecord = m.records.find(r => r.studentId === studentId);
-      if (studentRecord) {
-        total++;
-        if (studentRecord.status === 'present') present++;
-        else if (studentRecord.status === 'absent_justified') justified++;
-        else absent++;
-
-        history.push({
-          meetingId: m.id,
-          date: m.date,
-          title: m.title,
-          status: studentRecord.status,
-          note: studentRecord.note
-        });
-      }
+  saveMeeting: async (data: Omit<MeetingAttendance, 'id' | 'createdAt'>): Promise<MeetingAttendance> => {
+    const ref = await addDoc(collection(db, 'meetings'), {
+      ...data,
+      createdAt: serverTimestamp(),
     });
+    const snap = await getDoc(ref);
+    return toMeeting(snap.data()!, ref.id);
+  },
 
-    const effectivePresent = present + (justified * 0.5); // Justificativas ponderadas
-    const percentage = total > 0 ? Math.round(((present + justified) / total) * 100) : 100;
+  createMeeting: async (data: Omit<MeetingAttendance, 'id' | 'createdAt'>): Promise<MeetingAttendance> => {
+    return attendanceService.saveMeeting(data);
+  },
 
-    return {
-      totalMeetings: total,
-      presentCount: present,
-      justifiedCount: justified,
-      absentCount: absent,
-      percentage,
-      history: history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    };
-  }
+  updateMeeting: async (id: string, data: Partial<MeetingAttendance>): Promise<void> => {
+    await updateDoc(doc(db, 'meetings', id), data);
+  },
+
+  updateAttendanceRecords: async (meetingId: string, records: AttendanceRecord[]): Promise<void> => {
+    await updateDoc(doc(db, 'meetings', meetingId), { records });
+  },
+
+  deleteMeeting: async (id: string): Promise<void> => {
+    await deleteDoc(doc(db, 'meetings', id));
+  },
 };
