@@ -1,58 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Coleção de usuários (Perfis públicos para listagem e demonstração de acesso rápido)
-    match /users/{userId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
-    }
-
-    // Grupos de Pesquisa
-    match /groups/{groupId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
-    }
-
-    // Linhas de Pesquisa
-    match /lines/{lineId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
-    }
-
-    // Reuniões e Frequência
-    match /meetings/{meetingId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
-    }
-
-    // Tarefas e Atividades
-    match /tasks/{taskId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
-    }
-
-    // Diário de Bordo
-    match /logbooks/{entryId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
-    }
-
-    // Fotos e Registros Visuais
-    match /photos/{photoId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
-    }
-
-    // Recursos da Linha
-    match /resources/{resourceId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+    // Permite leitura e escrita completa para todos os módulos acadêmicos do SESI ICP
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
