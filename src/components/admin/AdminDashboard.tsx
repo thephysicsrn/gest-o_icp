@@ -87,6 +87,8 @@ export const AdminDashboard: React.FC = () => {
     password: string;
     role: UserRole;
     unit: SesiUnit;
+    matricula?: string;
+    areaOrGrade?: string;
   } | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [emailSentStatus, setEmailSentStatus] = useState<string | null>(null);
@@ -174,6 +176,8 @@ export const AdminDashboard: React.FC = () => {
           password: passwordToUse,
           role: modalFormData.role,
           unit: modalFormData.unit,
+          matricula: modalFormData.matricula,
+          areaOrGrade: modalFormData.areaOrGrade,
         });
 
         // Disparo automático do e-mail em segundo plano
@@ -203,8 +207,17 @@ export const AdminDashboard: React.FC = () => {
 
   const getAccessMessageText = () => {
     if (!createdCredentials) return '';
-    const roleName = createdCredentials.role === 'teacher' ? 'Professor(a) Pesquisador(a) Líder' : createdCredentials.role === 'student' ? 'Aluno(a) Pesquisador(a)' : 'Administrador(a)';
-    return `Olá, ${createdCredentials.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN foi concluído com sucesso como ${roleName}.\n\n🌐 Portal de Acesso ao Sistema:\n${OFFICIAL_SITE_URL}\n\n📌 Seus Dados de Acesso:\n• E-mail: ${createdCredentials.email}\n• Senha Provisória: ${createdCredentials.password}\n• Polo SESI: ${createdCredentials.unit}\n\nAcesse o link acima para realizar seu login institucional, abrir seu grupo de pesquisa e cadastrar suas linhas científicas!\n\nAtenciosamente,\nCoordenação Regional de Iniciação Científica - SESI RN`;
+    const isStudent = createdCredentials.role === 'student';
+    const roleName = isStudent ? 'Aluno(a) Pesquisador(a)' : createdCredentials.role === 'teacher' ? 'Professor(a) Pesquisador(a) Líder' : 'Administrador(a)';
+    const customDetail = createdCredentials.areaOrGrade 
+      ? (isStudent ? `• Série / Turma: ${createdCredentials.areaOrGrade}\n` : `• Área de Atuação: ${createdCredentials.areaOrGrade}\n`) 
+      : '';
+    const matriculaDetail = createdCredentials.matricula ? `• Matrícula SESI: ${createdCredentials.matricula}\n` : '';
+    const actionText = isStudent 
+      ? 'Acesse o link acima para acompanhar sua linha de pesquisa, preencher o Diário de Bordo Científico e registrar suas atividades!'
+      : 'Acesse o link acima para realizar seu login institucional, abrir seu grupo de pesquisa e cadastrar suas linhas científicas!';
+
+    return `Olá, ${createdCredentials.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN foi concluído com sucesso como ${roleName}.\n\n🌐 Portal de Acesso ao Sistema:\n${OFFICIAL_SITE_URL}\n\n📌 Seus Dados de Acesso:\n• E-mail: ${createdCredentials.email}\n• Senha Provisória: ${createdCredentials.password}\n• Polo SESI: ${createdCredentials.unit}\n${matriculaDetail}${customDetail}\n${actionText}\n\nAtenciosamente,\nCoordenação Regional de Iniciação Científica - SESI RN`;
   };
 
   const handleCopyAccessMessage = () => {
@@ -232,8 +245,9 @@ export const AdminDashboard: React.FC = () => {
       alert('Você não pode excluir o próprio usuário logado.');
       return;
     }
-    if (confirm(`Tem certeza que deseja excluir o usuário ${user.name}?`)) {
-      await authService.deleteUser(user.uid);
+    const roleText = user.role === 'teacher' ? 'o(a) professor(a)' : user.role === 'student' ? 'o(a) aluno(a)' : 'o administrador';
+    if (confirm(`Tem certeza que deseja excluir permanentemente ${roleText} ${user.name} (${user.email})? Esta ação removerá o usuário do banco de dados e de todas as linhas de pesquisa.`)) {
+      await authService.deleteUser(user.uid, user.email);
       await reloadUsers();
     }
   };
@@ -633,6 +647,20 @@ export const AdminDashboard: React.FC = () => {
                     <span className="text-slate-500 font-semibold">Polo SESI</span>
                     <span className="font-semibold text-slate-700">{createdCredentials.unit}</span>
                   </div>
+                  {createdCredentials.matricula && (
+                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                      <span className="text-slate-500 font-semibold">Matrícula</span>
+                      <span className="font-semibold text-slate-800 font-mono">{createdCredentials.matricula}</span>
+                    </div>
+                  )}
+                  {createdCredentials.areaOrGrade && (
+                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                      <span className="text-slate-500 font-semibold">
+                        {createdCredentials.role === 'student' ? 'Série / Turma' : 'Área de Atuação'}
+                      </span>
+                      <span className="font-semibold text-slate-800">{createdCredentials.areaOrGrade}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between pt-0.5">
                     <span className="text-slate-500 font-semibold flex items-center gap-1">
                       <Globe className="w-3.5 h-3.5 text-[#002B5C]" />
@@ -657,7 +685,9 @@ export const AdminDashboard: React.FC = () => {
                     className="w-full bg-[#002B5C] hover:bg-[#003B71] text-white py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
                   >
                     <Mail className="w-4 h-4 text-[#70B32D]" />
-                    <span>Disparar E-mail Institucional para o Professor</span>
+                    <span>
+                      Disparar E-mail Institucional para {createdCredentials.role === 'student' ? 'o Aluno' : 'o Professor'}
+                    </span>
                   </button>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

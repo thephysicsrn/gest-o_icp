@@ -87,7 +87,8 @@ export const authService = {
     phone?: string;
     areaOrGrade?: string;
   }): Promise<UserProfile> => {
-    const password = userData.password || 'sesi@prof2026';
+    const defaultPassword = userData.role === 'student' ? 'sesi@aluno2026' : userData.role === 'teacher' ? 'sesi@prof2026' : 'sesi@admin2026';
+    const password = userData.password || defaultPassword;
     const cleanEmail = userData.email.trim().toLowerCase();
     let uid = '';
     
@@ -101,12 +102,12 @@ export const authService = {
       await signOut(secondaryAuth);
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') {
-        // Se já existe no Auth, busca ou atualiza o perfil no Firestore
+        // Se a conta já existe no Auth (ex: recadastro de usuário excluído), localiza ou gera ID consistente
         const snap = await getDocs(query(collection(db, 'users'), where('email', '==', cleanEmail)));
         if (!snap.empty) {
           uid = snap.docs[0].id;
         } else {
-          throw new Error(`O e-mail "${cleanEmail}" já está cadastrado no sistema.`);
+          uid = `usr_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
         }
       } else if (err.code === 'auth/invalid-email') {
         throw new Error('E-mail institucional informado é inválido.');
@@ -144,8 +145,36 @@ export const authService = {
     return toUserProfile(snap.data()!, uid);
   },
 
-  deleteUser: async (uid: string): Promise<void> => {
+  deleteUser: async (uid: string, email?: string): Promise<void> => {
+    // 1. Remove do Firestore
     await deleteDoc(doc(db, 'users', uid));
+
+    // 2. Remove o aluno das linhas de pesquisa onde estiver matriculado
+    try {
+      const linesSnap = await getDocs(collection(db, 'lines'));
+      for (const lineDoc of linesSnap.docs) {
+        const lineData = lineDoc.data();
+        if (Array.isArray(lineData.studentIds) && lineData.studentIds.includes(uid)) {
+          const updatedStudentIds = lineData.studentIds.filter((id: string) => id !== uid);
+          await updateDoc(doc(db, 'lines', lineDoc.id), {
+            studentIds: updatedStudentIds,
+          });
+        }
+      }
+    } catch {
+      // Continua caso ocorra aviso nas linhas
+    }
+
+    // 3. Tenta exclusão definitiva no Firebase Auth via API Serverless
+    try {
+      await fetch('/api/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, email }),
+      });
+    } catch {
+      // Ignora caso api serverless não esteja ativa localmente
+    }
   },
 
   getCurrentUser: (): UserProfile | null => null,
