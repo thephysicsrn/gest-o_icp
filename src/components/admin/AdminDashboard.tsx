@@ -32,7 +32,9 @@ import {
   Mail,
   ExternalLink,
   MessageSquare,
-  Globe
+  Globe,
+  Settings,
+  Send
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -93,6 +95,36 @@ export const AdminDashboard: React.FC = () => {
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [emailSentStatus, setEmailSentStatus] = useState<string | null>(null);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Modal de Configuração de E-mail
+  const [isEmailSettingsOpen, setIsEmailSettingsOpen] = useState(false);
+  const [resendApiKeyInput, setResendApiKeyInput] = useState('');
+  const [emailConfigStatus, setEmailConfigStatus] = useState<string | null>(null);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+
+  const handleOpenEmailSettings = async () => {
+    setEmailConfigStatus(null);
+    const currentKey = await emailService.getApiKey();
+    setResendApiKeyInput(currentKey || '');
+    setIsEmailSettingsOpen(true);
+  };
+
+  const handleSaveEmailConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingConfig(true);
+    setEmailConfigStatus(null);
+    try {
+      await emailService.saveApiKey(resendApiKeyInput);
+      setEmailConfigStatus('✅ Chave da API Resend salva com sucesso! O disparo em segundo plano está ativo.');
+      setTimeout(() => {
+        setIsEmailSettingsOpen(false);
+      }, 1500);
+    } catch (err: any) {
+      setEmailConfigStatus('❌ Erro ao salvar configuração: ' + err.message);
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
 
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
@@ -282,13 +314,24 @@ export const AdminDashboard: React.FC = () => {
             </p>
           </div>
 
-          <button
-            onClick={handleOpenCreateModal}
-            className="bg-[#70B32D] hover:bg-[#5da523] active:scale-95 transition-all text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shrink-0 uppercase tracking-wide"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Cadastrar Usuário</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              onClick={handleOpenEmailSettings}
+              className="bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs border border-white/20 cursor-pointer"
+              title="Configurar Chave para Disparo Automático na Nuvem"
+            >
+              <Settings className="w-4 h-4 text-blue-200" />
+              <span>Configurar E-mail</span>
+            </button>
+
+            <button
+              onClick={handleOpenCreateModal}
+              className="bg-[#70B32D] hover:bg-[#5da523] active:scale-95 transition-all text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md uppercase tracking-wide cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Cadastrar Usuário</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -896,6 +939,80 @@ export const AdminDashboard: React.FC = () => {
               </form>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Configuração de E-mail Automático */}
+      {isEmailSettingsOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-[#002B5C] p-4 sm:p-5 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-[#70B32D]">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">
+                    Disparo Automático de E-mails
+                  </h3>
+                  <p className="text-xs text-blue-200">
+                    Integração com a Nuvem (Resend API)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEmailSettingsOpen(false)}
+                className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEmailConfig} className="p-5 space-y-4 text-xs">
+              <p className="text-slate-600 leading-relaxed">
+                Para que o sistema entregue o e-mail oficial formatado na caixa de entrada do professor e do aluno automaticamente pela nuvem, insira sua chave gratuita da API Resend (gerada em 1 minuto em <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-[#002B5C] font-bold underline">resend.com</a>):
+              </p>
+
+              <div>
+                <label className="block font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Chave de API Resend (re_...)
+                </label>
+                <input
+                  type="password"
+                  value={resendApiKeyInput}
+                  onChange={(e) => setResendApiKeyInput(e.target.value)}
+                  placeholder="re_123456789abcdef..."
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  O plano gratuito do Resend permite 3.000 e-mails/mês sem custos.
+                </p>
+              </div>
+
+              {emailConfigStatus && (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium">
+                  {emailConfigStatus}
+                </div>
+              )}
+
+              <div className="border-t border-slate-100 pt-3 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEmailSettingsOpen(false)}
+                  className="px-4 py-2 text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingConfig}
+                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl font-bold shadow-md uppercase tracking-wide disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingConfig ? 'Salvando...' : 'Salvar Configuração'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
