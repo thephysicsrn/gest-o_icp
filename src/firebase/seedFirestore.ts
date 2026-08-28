@@ -229,46 +229,8 @@ async function seed() {
     console.log(`     📄 Perfil salvo no Firestore para ${user.name} (${user.unit})`);
   }
 
-  // Faz login como admin para criar os grupos de pesquisa com permissão
-  await signInWithEmailAndPassword(auth, 'admin@sesi.org.br', 'sesi@admin2026');
-
-  console.log('\n🏛️ [3/3] Criando Grupos de Pesquisa Oficiais (Prontos para cadastro de linhas reais)...');
-  
-  // Grupo SGA
-  const groupSgaRef = await addDoc(collection(db, 'groups'), {
-    title: 'GPROB - Grupo de Pesquisa em Robótica e Sistemas Inteligentes',
-    description: 'Investigação e desenvolvimento de protótipos de automação, sensoriamento remoto e visão computacional aplicados à indústria e ao meio ambiente.',
-    unit: 'SESI SÃO GONÇALO DO AMARANTE',
-    leaderTeacherId: uids['carlos.medeiros@sesi.org.br'] || 'teacher-sg',
-    leaderTeacherName: 'Prof. Dr. Carlos Eduardo Medeiros',
-    createdAt: new Date().toISOString(),
-  });
-  console.log(`  ✅ Grupo SGA criado: ${groupSgaRef.id}`);
-
-  // Grupo Macau
-  const groupMacauRef = await addDoc(collection(db, 'groups'), {
-    title: 'NUPES - Núcleo de Pesquisa em Energias Renováveis e Meio Ambiente',
-    description: 'Estudos de dessalinização solar, biopolímeros a partir de resíduos da carcinicultura e eficiência energética.',
-    unit: 'SESI MACAU',
-    leaderTeacherId: uids['juliana.albuquerque@sesi.org.br'] || 'teacher-macau',
-    leaderTeacherName: 'Profa. Dra. Juliana Albuquerque',
-    createdAt: new Date().toISOString(),
-  });
-  console.log(`  ✅ Grupo Macau criado: ${groupMacauRef.id}`);
-
-  // Grupo Mossoró
-  const groupMossoroRef = await addDoc(collection(db, 'groups'), {
-    title: 'LABIOT - Laboratório de Automação e IoT para o Semiárido',
-    description: 'Desenvolvimento de sistemas embarcados de baixo custo para otimização de recursos hídricos na fruticultura irrigada.',
-    unit: 'SESI MOSSORÓ',
-    leaderTeacherId: uids['lucas.costa@sesi.org.br'] || 'teacher-mossoro',
-    leaderTeacherName: 'Prof. Me. Lucas Ferreira Costa',
-    createdAt: new Date().toISOString(),
-  });
-  console.log(`  ✅ Grupo Mossoró criado: ${groupMossoroRef.id}`);
-
-  console.log('\n🎉🎉🎉 BANCO DE DADOS RESETADO E PRONTO COM OS GRUPOS OFICIAIS! 🎉🎉🎉');
-  console.log('Nenhuma linha fictícia foi criada. Os orientadores e alunos podem cadastrar os dados reais.');
+  console.log('\n🎉🎉🎉 BANCO DE DADOS RESETADO COM SUCESSO! 🎉🎉🎉');
+  console.log('Nenhum grupo ou linha fictícia foi criada. Os professores orientadores darão abertura e nome aos grupos ao entrarem no sistema.');
 }
 
 seed().catch(err => {

@@ -409,40 +409,52 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {groups.map((group) => {
-            const groupLines = lines.filter(l => l.groupId === group.id);
-            const totalStudentsInGroup = groupLines.reduce((acc, curr) => acc + curr.studentIds.length, 0);
+        {groups.length === 0 ? (
+          <div className="text-center py-10 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 space-y-2">
+            <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
+            <h3 className="text-xs font-bold text-[#002B5C] uppercase tracking-wider">
+              Nenhum Grupo de Pesquisa Registrado
+            </h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+              Os professores líderes darão abertura oficial e atribuirão os nomes aos seus grupos de pesquisa ao acessarem a plataforma.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {groups.map((group) => {
+              const groupLines = lines.filter(l => l.groupId === group.id);
+              const totalStudentsInGroup = groupLines.reduce((acc, curr) => acc + curr.studentIds.length, 0);
 
-            return (
-              <div key={group.id} className="border border-slate-200 hover:border-[#002B5C] rounded-xl p-4 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 shadow-xs hover:shadow-md">
-                <div>
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="bg-blue-50 text-[#002B5C] border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold">
-                      {group.unit.replace('SESI ', '')}
-                    </span>
-                    <span className="text-[11px] text-slate-500 font-semibold">{groupLines.length}/5 Linhas</span>
+              return (
+                <div key={group.id} className="border border-slate-200 hover:border-[#002B5C] rounded-xl p-4 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 shadow-xs hover:shadow-md">
+                  <div>
+                    <div className="flex items-center justify-between text-xs mb-2">
+                      <span className="bg-blue-50 text-[#002B5C] border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                        {group.unit.replace('SESI ', '')}
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-semibold">{groupLines.length}/5 Linhas</span>
+                    </div>
+                    <h3 className="text-sm font-bold text-[#002B5C] leading-snug">
+                      {group.title}
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-1.5 line-clamp-2 leading-relaxed">
+                      {group.description}
+                    </p>
                   </div>
-                  <h3 className="text-sm font-bold text-[#002B5C] leading-snug">
-                    {group.title}
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1.5 line-clamp-2 leading-relaxed">
-                    {group.description}
-                  </p>
-                </div>
 
-                <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-xs">
-                  <span className="text-slate-600">
-                    Líder: <strong className="text-[#002B5C]">{group.leaderTeacherName.split(' ')[0]} {group.leaderTeacherName.split(' ').slice(-1)[0]}</strong>
-                  </span>
-                  <span className="bg-emerald-50 text-[#528521] border border-emerald-200 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                    {totalStudentsInGroup} alunos
-                  </span>
+                  <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-xs">
+                    <span className="text-slate-600">
+                      Líder: <strong className="text-[#002B5C]">{group.leaderTeacherName.split(' ')[0]} {group.leaderTeacherName.split(' ').slice(-1)[0]}</strong>
+                    </span>
+                    <span className="bg-emerald-50 text-[#528521] border border-emerald-200 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                      {totalStudentsInGroup} alunos
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Modal de Cadastro / Edição */}
