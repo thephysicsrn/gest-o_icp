@@ -174,11 +174,12 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const OFFICIAL_SITE_URL = 'https://gestao-icp.vercel.app';
+
   const getAccessMessageText = () => {
     if (!createdCredentials) return '';
     const roleName = createdCredentials.role === 'teacher' ? 'Professor(a) Pesquisador(a) Líder' : createdCredentials.role === 'student' ? 'Aluno(a) Pesquisador(a)' : 'Administrador(a)';
-    const siteUrl = window.location.origin;
-    return `Olá, ${createdCredentials.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN foi concluído com sucesso como ${roleName}.\n\n🌐 Portal de Acesso ao Sistema:\n${siteUrl}\n\n📌 Seus Dados de Acesso:\n• E-mail: ${createdCredentials.email}\n• Senha Provisória: ${createdCredentials.password}\n• Polo SESI: ${createdCredentials.unit}\n\nAcesse o link acima para realizar seu login institucional, abrir seu grupo de pesquisa e cadastrar suas linhas científicas!\n\nAtenciosamente,\nCoordenação Regional de Iniciação Científica - SESI RN`;
+    return `Olá, ${createdCredentials.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN foi concluído com sucesso como ${roleName}.\n\n🌐 Portal de Acesso ao Sistema:\n${OFFICIAL_SITE_URL}\n\n📌 Seus Dados de Acesso:\n• E-mail: ${createdCredentials.email}\n• Senha Provisória: ${createdCredentials.password}\n• Polo SESI: ${createdCredentials.unit}\n\nAcesse o link acima para realizar seu login institucional, abrir seu grupo de pesquisa e cadastrar suas linhas científicas!\n\nAtenciosamente,\nCoordenação Regional de Iniciação Científica - SESI RN`;
   };
 
   const handleCopyAccessMessage = () => {
@@ -596,12 +597,12 @@ export const AdminDashboard: React.FC = () => {
                       Link do Portal
                     </span>
                     <a
-                      href={window.location.origin}
+                      href="https://gestao-icp.vercel.app"
                       target="_blank"
                       rel="noreferrer"
                       className="font-bold text-[#002B5C] hover:underline flex items-center gap-1 font-mono text-[11px]"
                     >
-                      {window.location.origin.replace(/^https?:\/\//, '')}
+                      gestao-icp.vercel.app
                       <ExternalLink className="w-3 h-3 text-[#70B32D]" />
                     </a>
                   </div>
