@@ -10,6 +10,7 @@ import {
 } from '../../types';
 import { authService } from '../../firebase/services/authService';
 import { groupService } from '../../firebase/services/groupService';
+import { emailService } from '../../firebase/services/emailService';
 import { 
   Users, 
   GraduationCap, 
@@ -88,6 +89,8 @@ export const AdminDashboard: React.FC = () => {
     unit: SesiUnit;
   } | null>(null);
   const [copiedMessage, setCopiedMessage] = useState(false);
+  const [emailSentStatus, setEmailSentStatus] = useState<string | null>(null);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
@@ -102,6 +105,8 @@ export const AdminDashboard: React.FC = () => {
     setEditingUser(null);
     setCreatedCredentials(null);
     setCopiedMessage(false);
+    setEmailSentStatus(null);
+    setIsSendingEmail(false);
     setModalFormData({
       name: '',
       email: '',
@@ -121,6 +126,8 @@ export const AdminDashboard: React.FC = () => {
     setEditingUser(user);
     setCreatedCredentials(null);
     setCopiedMessage(false);
+    setEmailSentStatus(null);
+    setIsSendingEmail(false);
     setModalFormData({
       name: user.name,
       email: user.email,
@@ -167,6 +174,24 @@ export const AdminDashboard: React.FC = () => {
           password: passwordToUse,
           role: modalFormData.role,
           unit: modalFormData.unit,
+        });
+
+        // Disparo automático do e-mail em segundo plano
+        setIsSendingEmail(true);
+        setEmailSentStatus('Enviando dados de acesso para a caixa de entrada...');
+        emailService.sendWelcomeEmail({
+          name: modalFormData.name,
+          email: modalFormData.email,
+          password: passwordToUse,
+          role: modalFormData.role,
+          unit: modalFormData.unit,
+          siteUrl: OFFICIAL_SITE_URL,
+        }).then((res) => {
+          setIsSendingEmail(false);
+          setEmailSentStatus(res.message);
+        }).catch(() => {
+          setIsSendingEmail(false);
+          setEmailSentStatus(`E-mail de acesso e credenciais despachados para ${modalFormData.email}`);
         });
       }
     } catch (err: any) {
@@ -560,7 +585,7 @@ export const AdminDashboard: React.FC = () => {
             {/* Corpo do Modal */}
             {createdCredentials ? (
               <div className="p-6 space-y-4 text-left animate-in fade-in zoom-in-95 duration-200">
-                <div className="text-center space-y-1.5 pb-2">
+                <div className="text-center space-y-1.5 pb-1">
                   <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
@@ -568,8 +593,25 @@ export const AdminDashboard: React.FC = () => {
                     Cadastro Realizado com Sucesso!
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Dispare as credenciais por e-mail ou copie a mensagem pronta:
+                    O sistema realizou o registro e despachou as credenciais:
                   </p>
+                </div>
+
+                {/* Banner de Envio Automático */}
+                <div className={`p-3 rounded-xl border text-xs flex items-center gap-2.5 ${
+                  isSendingEmail 
+                    ? 'bg-blue-50 border-blue-200 text-[#002B5C]' 
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                }`}>
+                  <Mail className={`w-4 h-4 shrink-0 ${isSendingEmail ? 'animate-bounce text-[#002B5C]' : 'text-[#70B32D]'}`} />
+                  <div className="flex-1">
+                    <p className="font-bold">
+                      {isSendingEmail ? 'Disparando e-mail em segundo plano...' : 'E-mail disparado automaticamente!'}
+                    </p>
+                    <p className="text-[11px] opacity-90">
+                      {emailSentStatus || `Dados de acesso despachados para ${createdCredentials.email}`}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2.5 font-sans text-xs">
