@@ -12,6 +12,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  deleteDoc,
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -28,7 +29,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const USERS_SEED = [
-  // Admin
+  // Admins Gerais
   {
     email: 'admin@sesi.org.br',
     password: 'sesi@admin2026',
@@ -38,6 +39,36 @@ const USERS_SEED = [
     matricula: 'ADM-9901',
     phone: '(84) 3200-1000',
     areaOrGrade: 'Gestão Pedagógica & Inovação',
+  },
+  {
+    email: 'carolinefernandes@rn.sesi.org.br',
+    password: 'K9#mP4$vX8',
+    name: 'Caroline Fernandes',
+    role: 'admin',
+    unit: 'SESI SÃO GONÇALO DO AMARANTE',
+    matricula: 'ADM-2026-01',
+    phone: '(84) 3200-2001',
+    areaOrGrade: 'Coordenação Regional de Iniciação Científica',
+  },
+  {
+    email: 'franciscalima@rn.sesi.org.br',
+    password: 'T7@wL2&qR5',
+    name: 'Francisca Lima',
+    role: 'admin',
+    unit: 'SESI MACAU',
+    matricula: 'ADM-2026-02',
+    phone: '(84) 3200-2002',
+    areaOrGrade: 'Gestão Pedagógica & Avaliação Regional',
+  },
+  {
+    email: 'mateussilva@rn.sesi.org.br',
+    password: 'Z3!yN6*bF9',
+    name: 'Mateus Silva',
+    role: 'admin',
+    unit: 'SESI MOSSORÓ',
+    matricula: 'ADM-2026-03',
+    phone: '(84) 3200-2003',
+    areaOrGrade: 'Supervisão de Projetos & Inovação Regional',
   },
   // Professores
   {
@@ -146,7 +177,21 @@ const USERS_SEED = [
 ];
 
 async function seed() {
-  console.log('🌱 [1/5] Autenticando e criando perfis no Firebase...');
+  console.log('🧹 [0/5] Limpando dados antigos no Cloud Firestore...');
+  const collectionsToClear = ['groups', 'lines', 'meetings', 'tasks', 'resources', 'logbooks', 'photos'];
+  for (const colName of collectionsToClear) {
+    try {
+      const snap = await getDocs(collection(db, colName));
+      console.log(`  🗑️ Limpando coleção '${colName}' (${snap.docs.length} documentos encontrados)...`);
+      for (const docSnap of snap.docs) {
+        await deleteDoc(doc(db, colName, docSnap.id));
+      }
+    } catch (err: any) {
+      console.warn(`  ⚠️ Aviso ao limpar coleção '${colName}':`, err.message);
+    }
+  }
+
+  console.log('\n🌱 [1/5] Autenticando e criando perfis no Firebase...');
   const uids: Record<string, string> = {};
 
   for (const user of USERS_SEED) {
@@ -171,7 +216,7 @@ async function seed() {
 
     uids[user.email] = uid;
 
-    // Salva perfil no Firestore
+    // Salva perfil atualizado no Firestore
     await setDoc(doc(db, 'users', uid), {
       uid,
       name: user.name,
@@ -189,7 +234,7 @@ async function seed() {
   // Faz login como admin para criar os grupos e linhas com permissão
   await signInWithEmailAndPassword(auth, 'admin@sesi.org.br', 'sesi@admin2026');
 
-  console.log('\n🏛️ [2/5] Criando Grupos de Pesquisa...');
+  console.log('\n🏛️ [2/5] Criando Grupos de Pesquisa Oficiais...');
   
   // Grupo SGA
   const groupSgaRef = await addDoc(collection(db, 'groups'), {
@@ -201,7 +246,7 @@ async function seed() {
     createdAt: new Date().toISOString(),
   });
   const groupSgaId = groupSgaRef.id;
-  console.log(`  ✅ Grupo SGA: ${groupSgaId}`);
+  console.log(`  ✅ Grupo SGA criado: ${groupSgaId}`);
 
   // Grupo Macau
   const groupMacauRef = await addDoc(collection(db, 'groups'), {
@@ -213,7 +258,7 @@ async function seed() {
     createdAt: new Date().toISOString(),
   });
   const groupMacauId = groupMacauRef.id;
-  console.log(`  ✅ Grupo Macau: ${groupMacauId}`);
+  console.log(`  ✅ Grupo Macau criado: ${groupMacauId}`);
 
   // Grupo Mossoró
   const groupMossoroRef = await addDoc(collection(db, 'groups'), {
@@ -225,7 +270,7 @@ async function seed() {
     createdAt: new Date().toISOString(),
   });
   const groupMossoroId = groupMossoroRef.id;
-  console.log(`  ✅ Grupo Mossoró: ${groupMossoroId}`);
+  console.log(`  ✅ Grupo Mossoró criado: ${groupMossoroId}`);
 
   console.log('\n🔬 [3/5] Criando Linhas de Pesquisa...');
 
@@ -247,7 +292,7 @@ async function seed() {
     createdAt: new Date().toISOString(),
   });
   const lineSga1Id = lineSga1Ref.id;
-  console.log(`  ✅ Linha 1 SGA: ${lineSga1Id}`);
+  console.log(`  ✅ Linha 1 SGA criada: ${lineSga1Id}`);
 
   // Linha 2 SGA
   const sgaL2Students = [
@@ -295,7 +340,7 @@ async function seed() {
   });
   console.log(`  ✅ Linha Mossoró criada`);
 
-  console.log('\n📅 [4/5] Criando Reuniões, Tarefas e Recursos...');
+  console.log('\n📅 [4/5] Criando Reuniões, Tarefas e Recursos Iniciais...');
 
   // Reuniões
   await addDoc(collection(db, 'meetings'), {
@@ -407,7 +452,7 @@ async function seed() {
     createdAt: '2026-02-11T14:30:00Z'
   });
 
-  console.log('\n📖 [5/5] Criando Diários de Bordo e Fotos...');
+  console.log('\n📖 [5/5] Criando Diários de Bordo e Registros Fotográficos...');
 
   // Diários de Bordo
   await addDoc(collection(db, 'logbooks'), {
@@ -500,14 +545,18 @@ async function seed() {
     createdAt: '2026-02-18T16:50:00Z'
   });
 
-  console.log('\n🎉🎉🎉 BANCO DE DADOS FIREBASE POPULADO COM SUCESSO! 🎉🎉🎉');
-  console.log('\nCredenciais de acesso reais:');
+  console.log('\n🎉🎉🎉 BANCO DE DADOS FIREBASE RESETADO E POPULADO COM SUCESSO! 🎉🎉🎉');
+  console.log('\nCredenciais de acesso institucionais prontas:');
   console.log('  👑 Administrador: admin@sesi.org.br / sesi@admin2026');
-  console.log('  🎓 Professor:     carlos.medeiros@sesi.org.br / sesi@prof2026');
-  console.log('  🧪 Aluno:         arthur.silva@aluno.sesi.org.br / sesi@aluno2026');
+  console.log('  🎓 Professor SGA: carlos.medeiros@sesi.org.br / sesi@prof2026');
+  console.log('  🎓 Profa. Macau:  juliana.albuquerque@sesi.org.br / sesi@prof2026');
+  console.log('  🎓 Prof. Mossoró: lucas.costa@sesi.org.br / sesi@prof2026');
+  console.log('  🧪 Aluno Arthur:  arthur.silva@aluno.sesi.org.br / sesi@aluno2026');
+  console.log('  🧪 Aluna Beatriz: beatriz.ramos@aluno.sesi.org.br / sesi@aluno2026');
+  console.log('  🧪 Aluno Caio:    caio.meireles@aluno.sesi.org.br / sesi@aluno2026');
 }
 
 seed().catch(err => {
-  console.error('❌ Erro fatal durante o seed:', err);
+  console.error('❌ Erro fatal durante o reset e seed:', err);
   process.exit(1);
 });

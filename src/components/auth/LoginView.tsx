@@ -23,7 +23,6 @@ import {
   FlaskConical,
   Award,
   CheckCircle2,
-  Users,
   Sparkle
 } from 'lucide-react';
 
@@ -152,7 +151,7 @@ const DICAS_DIARIO = [
 ];
 
 export const LoginView: React.FC = () => {
-  const { login, allUsers, switchUser } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -182,10 +181,6 @@ export const LoginView: React.FC = () => {
       element.scrollIntoView({ behavior: 'smooth' });
     }
   };
-
-  const teachers = allUsers.filter(u => u.role === 'teacher');
-  const students = allUsers.filter(u => u.role === 'student');
-  const admin = allUsers.find(u => u.role === 'admin');
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-[#70B32D] selection:text-white relative flex flex-col justify-between">
@@ -383,7 +378,7 @@ export const LoginView: React.FC = () => {
               </h2>
             </div>
             <p className="text-xs text-slate-500 font-medium">
-              Entre com sua conta escolar ou teste em 1 clique
+              Entre com seu e-mail institucional e senha de acesso
             </p>
           </div>
 
@@ -547,64 +542,15 @@ export const LoginView: React.FC = () => {
                 </form>
               </div>
 
-              {/* Demonstração em 1 Clique */}
-              <div className="border-t border-slate-100 pt-4 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#002B5C] flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-[#70B32D]" />
-                    Acesso Rápido para Demonstração:
-                  </span>
-                  <span className="text-[10px] font-bold bg-emerald-50 text-[#528521] px-2 py-0.5 rounded border border-emerald-200">
-                    1 Clique
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {admin && (
-                    <button
-                      type="button"
-                      onClick={() => switchUser(admin)}
-                      className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-[#002B5C] transition-all text-center group"
-                      title={admin.name}
-                    >
-                      <div className="w-6 h-6 rounded-lg bg-[#002B5C] text-white mx-auto flex items-center justify-center mb-1">
-                        <ShieldCheck className="w-3.5 h-3.5 text-[#70B32D]" />
-                      </div>
-                      <p className="text-[11px] font-bold text-[#002B5C] truncate">Admin</p>
-                      <p className="text-[9px] text-slate-400 truncate">Regional</p>
-                    </button>
-                  )}
-
-                  {teachers[0] && (
-                    <button
-                      type="button"
-                      onClick={() => switchUser(teachers[0])}
-                      className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-[#002B5C] transition-all text-center group"
-                      title={teachers[0].name}
-                    >
-                      <div className="w-6 h-6 rounded-lg bg-blue-100 text-[#002B5C] mx-auto flex items-center justify-center mb-1">
-                        <GraduationCap className="w-3.5 h-3.5" />
-                      </div>
-                      <p className="text-[11px] font-bold text-[#002B5C] truncate">Professor</p>
-                      <p className="text-[9px] text-slate-400 truncate">Prof. Carlos</p>
-                    </button>
-                  )}
-
-                  {students[0] && (
-                    <button
-                      type="button"
-                      onClick={() => switchUser(students[0])}
-                      className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-[#70B32D] transition-all text-center group"
-                      title={students[0].name}
-                    >
-                      <div className="w-6 h-6 rounded-lg bg-emerald-100 text-[#528521] mx-auto flex items-center justify-center mb-1">
-                        <User className="w-3.5 h-3.5" />
-                      </div>
-                      <p className="text-[11px] font-bold text-[#528521] truncate">Aluno</p>
-                      <p className="text-[9px] text-slate-400 truncate">Arthur V.</p>
-                    </button>
-                  )}
-                </div>
+              {/* Informação Institucional de Acesso Seguro */}
+              <div className="border-t border-slate-100 pt-4 flex items-center justify-between text-slate-500 text-[11px]">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#70B32D]" />
+                  Acesso seguro via credenciais SESI RN
+                </span>
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                  Ano Letivo 2026
+                </span>
               </div>
 
             </div>
