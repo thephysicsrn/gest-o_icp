@@ -23,7 +23,11 @@ import {
   Layers, 
   CheckCircle2, 
   AlertCircle,
-  X
+  X,
+  Key,
+  Copy,
+  Check,
+  RefreshCw
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -40,6 +44,7 @@ export const AdminDashboard: React.FC = () => {
   const [modalFormData, setModalFormData] = useState({
     name: '',
     email: '',
+    password: '',
     role: 'teacher' as UserRole,
     unit: 'SESI SÃO GONÇALO DO AMARANTE' as SesiUnit,
     matricula: '',
@@ -71,11 +76,32 @@ export const AdminDashboard: React.FC = () => {
     return matchesUnit && matchesRole && matchesSearch;
   });
 
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    role: UserRole;
+    unit: SesiUnit;
+  } | null>(null);
+  const [copiedMessage, setCopiedMessage] = useState(false);
+
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let randomPart = '';
+    for (let i = 0; i < 4; i++) {
+      randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `Sesi@${randomPart}!`;
+  };
+
   const handleOpenCreateModal = () => {
     setEditingUser(null);
+    setCreatedCredentials(null);
+    setCopiedMessage(false);
     setModalFormData({
       name: '',
       email: '',
+      password: 'sesi@prof2026',
       role: 'teacher',
       unit: 'SESI SÃO GONÇALO DO AMARANTE',
       matricula: `SESI-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -89,9 +115,12 @@ export const AdminDashboard: React.FC = () => {
 
   const handleOpenEditModal = (user: UserProfile) => {
     setEditingUser(user);
+    setCreatedCredentials(null);
+    setCopiedMessage(false);
     setModalFormData({
       name: user.name,
       email: user.email,
+      password: '',
       role: user.role,
       unit: user.unit,
       matricula: user.matricula,
@@ -117,17 +146,38 @@ export const AdminDashboard: React.FC = () => {
       if (editingUser) {
         await authService.updateUser(editingUser.uid, modalFormData);
         setModalSuccess('Usuário atualizado com sucesso!');
+        await reloadUsers();
+        setTimeout(() => {
+          setIsModalOpen(false);
+        }, 1000);
       } else {
-        await authService.createUser(modalFormData);
-        setModalSuccess('Usuário cadastrado com sucesso!');
+        const passwordToUse = modalFormData.password || generateRandomPassword();
+        await authService.createUser({
+          ...modalFormData,
+          password: passwordToUse,
+        });
+        await reloadUsers();
+        setCreatedCredentials({
+          name: modalFormData.name,
+          email: modalFormData.email,
+          password: passwordToUse,
+          role: modalFormData.role,
+          unit: modalFormData.unit,
+        });
       }
-      await reloadUsers();
-      setTimeout(() => {
-        setIsModalOpen(false);
-      }, 1000);
     } catch (err: any) {
       setModalError(err.message || 'Erro ao salvar usuário.');
     }
+  };
+
+  const handleCopyAccessMessage = () => {
+    if (!createdCredentials) return;
+    const roleName = createdCredentials.role === 'teacher' ? 'Professor(a)' : createdCredentials.role === 'student' ? 'Aluno(a)' : 'Administrador(a)';
+    const text = `Olá, ${createdCredentials.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN foi realizado com sucesso como ${roleName}.\n\n📌 Dados de Acesso:\n• E-mail: ${createdCredentials.email}\n• Senha Provisória: ${createdCredentials.password}\n• Polo SESI: ${createdCredentials.unit}\n\nAcesse a plataforma para gerenciar seus grupos e linhas de pesquisa!`;
+    
+    navigator.clipboard.writeText(text);
+    setCopiedMessage(true);
+    setTimeout(() => setCopiedMessage(false), 3000);
   };
 
   const handleDeleteUser = async (user: UserProfile) => {
@@ -486,128 +536,236 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Corpo do Modal */}
-            <form onSubmit={handleSaveUser} className="p-5 space-y-4">
-              
-              {modalError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-                  <span>{modalError}</span>
-                </div>
-              )}
-
-              {modalSuccess && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>{modalSuccess}</span>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                  Nome Completo *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={modalFormData.name}
-                  onChange={(e) => setModalFormData({ ...modalFormData, name: e.target.value })}
-                  placeholder="Ex: Prof. Dr. Rodrigo Souza ou Aluno Vinicius"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                    E-mail Institucional *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={modalFormData.email}
-                    onChange={(e) => setModalFormData({ ...modalFormData, email: e.target.value })}
-                    placeholder="usuario@sesi.org.br"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
-                  />
+            {createdCredentials ? (
+              <div className="p-6 space-y-4 text-left animate-in fade-in zoom-in-95 duration-200">
+                <div className="text-center space-y-1.5 pb-2">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base font-bold text-[#002B5C]">
+                    Cadastro Realizado com Sucesso!
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Copie as credenciais abaixo para informar o acesso ao usuário:
+                  </p>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                    Papel / Função *
-                  </label>
-                  <select
-                    value={modalFormData.role}
-                    onChange={(e) => setModalFormData({ ...modalFormData, role: e.target.value as UserRole })}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] font-medium"
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3 font-sans">
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                    <span className="text-xs text-slate-500 font-semibold">Nome Completo</span>
+                    <span className="text-xs font-bold text-[#002B5C]">{createdCredentials.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                    <span className="text-xs text-slate-500 font-semibold">E-mail de Acesso</span>
+                    <span className="text-xs font-bold text-slate-900 font-mono">{createdCredentials.email}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                    <span className="text-xs text-slate-500 font-semibold">Senha Inicial</span>
+                    <span className="text-xs font-extrabold text-[#528521] bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 font-mono tracking-wider">
+                      {createdCredentials.password}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500 font-semibold">Polo SESI</span>
+                    <span className="text-xs font-semibold text-slate-700">{createdCredentials.unit}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyAccessMessage}
+                    className="w-full bg-[#002B5C] hover:bg-[#003B71] text-white py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
                   >
-                    <option value="teacher">Professor Pesquisador Líder</option>
-                    <option value="student">Aluno Pesquisador</option>
-                    <option value="admin">Administrador</option>
-                  </select>
+                    {copiedMessage ? (
+                      <>
+                        <Check className="w-4 h-4 text-[#70B32D]" />
+                        <span>Mensagem Copiada para a Área de Transferência!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4 text-[#70B32D]" />
+                        <span>Copiar Mensagem Pronta de Acesso</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreatedCredentials(null);
+                      setIsModalOpen(false);
+                    }}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    Concluir e Fechar
+                  </button>
                 </div>
               </div>
+            ) : (
+              <form onSubmit={handleSaveUser} className="p-5 space-y-4">
+                
+                {modalError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                    <span>{modalError}</span>
+                  </div>
+                )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {modalSuccess && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{modalSuccess}</span>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                    Unidade Escolar SESI *
-                  </label>
-                  <select
-                    value={modalFormData.unit}
-                    onChange={(e) => setModalFormData({ ...modalFormData, unit: e.target.value as SesiUnit })}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] font-medium"
-                  >
-                    {SESI_UNITS.map(unit => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                    Matrícula SESI
+                    Nome Completo *
                   </label>
                   <input
                     type="text"
-                    value={modalFormData.matricula}
-                    onChange={(e) => setModalFormData({ ...modalFormData, matricula: e.target.value })}
-                    placeholder="SESI-2026-99"
+                    required
+                    value={modalFormData.name}
+                    onChange={(e) => setModalFormData({ ...modalFormData, name: e.target.value })}
+                    placeholder="Ex: Prof. Dr. Rodrigo Souza ou Aluno Vinicius"
                     className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                  {modalFormData.role === 'teacher' ? 'Área de Atuação / Formação' : 'Série / Turma / Curso Técnico'}
-                </label>
-                <input
-                  type="text"
-                  value={modalFormData.areaOrGrade}
-                  onChange={(e) => setModalFormData({ ...modalFormData, areaOrGrade: e.target.value })}
-                  placeholder={modalFormData.role === 'teacher' ? 'Ex: Engenharia Elétrica & Robótica' : 'Ex: 3ª Série Ensino Médio - Turma A'}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
-                />
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                      E-mail Institucional *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={modalFormData.email}
+                      onChange={(e) => setModalFormData({ ...modalFormData, email: e.target.value })}
+                      placeholder="usuario@sesi.org.br"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                    />
+                  </div>
 
-              {/* Botões de Ação */}
-              <div className="border-t border-slate-100 pt-4 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 font-semibold"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md transition-all uppercase tracking-wide"
-                >
-                  {editingUser ? 'Salvar Alterações' : 'Confirmar Cadastro'}
-                </button>
-              </div>
+                  <div>
+                    <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                      Papel / Função *
+                    </label>
+                    <select
+                      value={modalFormData.role}
+                      onChange={(e) => {
+                        const newRole = e.target.value as UserRole;
+                        const defaultPwd = newRole === 'teacher' ? 'sesi@prof2026' : newRole === 'student' ? 'sesi@aluno2026' : 'sesi@admin2026';
+                        setModalFormData({ 
+                          ...modalFormData, 
+                          role: newRole,
+                          password: modalFormData.password.startsWith('sesi@') ? defaultPwd : modalFormData.password
+                        });
+                      }}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] font-medium"
+                    >
+                      <option value="teacher">Professor Pesquisador Líder</option>
+                      <option value="student">Aluno Pesquisador</option>
+                      <option value="admin">Administrador</option>
+                    </select>
+                  </div>
+                </div>
 
-            </form>
+                {!editingUser && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide">
+                        Senha de Acesso Inicial *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setModalFormData({ ...modalFormData, password: generateRandomPassword() })}
+                        className="text-[11px] font-bold text-[#528521] hover:text-[#70B32D] flex items-center gap-1 cursor-pointer"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Gerar Senha Aleatória
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Key className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                      <input
+                        type="text"
+                        required
+                        value={modalFormData.password}
+                        onChange={(e) => setModalFormData({ ...modalFormData, password: e.target.value })}
+                        placeholder="Defina a senha inicial..."
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-mono focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Ao concluir, você poderá copiar os dados prontos para enviar ao professor.
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                      Unidade Escolar SESI *
+                    </label>
+                    <select
+                      value={modalFormData.unit}
+                      onChange={(e) => setModalFormData({ ...modalFormData, unit: e.target.value as SesiUnit })}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] font-medium"
+                    >
+                      {SESI_UNITS.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                      Matrícula SESI
+                    </label>
+                    <input
+                      type="text"
+                      value={modalFormData.matricula}
+                      onChange={(e) => setModalFormData({ ...modalFormData, matricula: e.target.value })}
+                      placeholder="SESI-2026-99"
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                    {modalFormData.role === 'teacher' ? 'Área de Atuação / Formação' : 'Série / Turma / Curso Técnico'}
+                  </label>
+                  <input
+                    type="text"
+                    value={modalFormData.areaOrGrade}
+                    onChange={(e) => setModalFormData({ ...modalFormData, areaOrGrade: e.target.value })}
+                    placeholder={modalFormData.role === 'teacher' ? 'Ex: Engenharia Elétrica & Robótica' : 'Ex: 3ª Série Ensino Médio - Turma A'}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                  />
+                </div>
+
+                {/* Botões de Ação */}
+                <div className="border-t border-slate-100 pt-4 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 font-semibold cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md transition-all uppercase tracking-wide cursor-pointer"
+                  >
+                    {editingUser ? 'Salvar Alterações' : 'Confirmar Cadastro'}
+                  </button>
+                </div>
+
+              </form>
+            )}
 
           </div>
         </div>
