@@ -34,7 +34,11 @@ import {
   MessageSquare,
   Globe,
   Settings,
-  Send
+  Send,
+  Lock,
+  ShieldAlert,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -96,6 +100,12 @@ export const AdminDashboard: React.FC = () => {
   const [emailSentStatus, setEmailSentStatus] = useState<string | null>(null);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
+  // Modal de Proteção por Senha Mestra
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [enteredPassword, setEnteredPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+
   // Modal de Configuração de E-mail (EmailJS)
   const [isEmailSettingsOpen, setIsEmailSettingsOpen] = useState(false);
   const [emailjsForm, setEmailjsForm] = useState({
@@ -107,13 +117,27 @@ export const AdminDashboard: React.FC = () => {
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isTestingEmail, setIsTestingEmail] = useState(false);
 
-  const handleOpenEmailSettings = async () => {
-    setEmailConfigStatus(null);
-    const currentConfig = await emailService.getEmailjsConfig();
-    if (currentConfig) {
-      setEmailjsForm(currentConfig);
+  const handleOpenEmailSettings = () => {
+    setEnteredPassword('');
+    setPasswordError(null);
+    setShowPassword(false);
+    setIsPasswordModalOpen(true);
+  };
+
+  const handleVerifyPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validPasswords = ['sesi@master2026', 'sesi@admin2026', 'admin@icp2026', 'sesi2026', 'sesi@123456'];
+    if (validPasswords.includes(enteredPassword.trim())) {
+      setIsPasswordModalOpen(false);
+      setEmailConfigStatus(null);
+      const currentConfig = await emailService.getEmailjsConfig();
+      if (currentConfig) {
+        setEmailjsForm(currentConfig);
+      }
+      setIsEmailSettingsOpen(true);
+    } else {
+      setPasswordError('Senha de segurança incorreta. Acesso restrito ao desenvolvedor / TI.');
     }
-    setIsEmailSettingsOpen(true);
   };
 
   const handleSaveEmailConfig = async (e: React.FormEvent) => {
@@ -964,6 +988,92 @@ export const AdminDashboard: React.FC = () => {
               </form>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Senha Mestra */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-[#002B5C] p-4 sm:p-5 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-400/20 text-amber-300 flex items-center justify-center">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">
+                    Área Restrita / TI
+                  </h3>
+                  <p className="text-[11px] text-blue-200">
+                    Acesso Protegido por Senha
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleVerifyPassword} className="p-5 space-y-4 text-xs">
+              <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 p-3 rounded-xl text-amber-900">
+                <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                <p className="text-[11px] leading-relaxed">
+                  As configurações de envio e API são restritas para evitar alterações indevidas. Digite a senha mestra para continuar.
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#002B5C] uppercase tracking-wide mb-1 text-[11px]">
+                  Senha Mestra de Acesso
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    autoFocus
+                    value={enteredPassword}
+                    onChange={(e) => setEnteredPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white text-xs font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {passwordError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-[11px] font-semibold flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{passwordError}</span>
+                </div>
+              )}
+
+              <div className="border-t border-slate-100 pt-3 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  className="px-4 py-2 text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl font-bold shadow-md uppercase tracking-wide cursor-pointer flex items-center gap-1.5"
+                >
+                  <Lock className="w-3.5 h-3.5 text-[#70B32D]" />
+                  <span>Desbloquear</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
