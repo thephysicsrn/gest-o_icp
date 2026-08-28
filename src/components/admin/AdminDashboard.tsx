@@ -96,16 +96,23 @@ export const AdminDashboard: React.FC = () => {
   const [emailSentStatus, setEmailSentStatus] = useState<string | null>(null);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
-  // Modal de Configuração de E-mail
+  // Modal de Configuração de E-mail (EmailJS)
   const [isEmailSettingsOpen, setIsEmailSettingsOpen] = useState(false);
-  const [resendApiKeyInput, setResendApiKeyInput] = useState('');
+  const [emailjsForm, setEmailjsForm] = useState({
+    serviceId: '',
+    templateId: '',
+    publicKey: '',
+  });
   const [emailConfigStatus, setEmailConfigStatus] = useState<string | null>(null);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
 
   const handleOpenEmailSettings = async () => {
     setEmailConfigStatus(null);
-    const currentKey = await emailService.getApiKey();
-    setResendApiKeyInput(currentKey || '');
+    const currentConfig = await emailService.getEmailjsConfig();
+    if (currentConfig) {
+      setEmailjsForm(currentConfig);
+    }
     setIsEmailSettingsOpen(true);
   };
 
@@ -114,15 +121,33 @@ export const AdminDashboard: React.FC = () => {
     setIsSavingConfig(true);
     setEmailConfigStatus(null);
     try {
-      await emailService.saveApiKey(resendApiKeyInput);
-      setEmailConfigStatus('✅ Chave da API Resend salva com sucesso! O disparo em segundo plano está ativo.');
+      await emailService.saveEmailjsConfig(emailjsForm);
+      setEmailConfigStatus('✅ Configurações do EmailJS salvas com sucesso! O disparo automático está ativo.');
       setTimeout(() => {
         setIsEmailSettingsOpen(false);
       }, 1500);
     } catch (err: any) {
-      setEmailConfigStatus('❌ Erro ao salvar configuração: ' + err.message);
+      setEmailConfigStatus('❌ Erro ao salvar: ' + err.message);
     } finally {
       setIsSavingConfig(false);
+    }
+  };
+
+  const handleTestEmailjs = async () => {
+    if (!emailjsForm.serviceId || !emailjsForm.templateId || !emailjsForm.publicKey) {
+      setEmailConfigStatus('Preencha os 3 campos (Service ID, Template ID e Public Key) antes de testar.');
+      return;
+    }
+    setIsTestingEmail(true);
+    setEmailConfigStatus('Enviando e-mail de teste via EmailJS...');
+    try {
+      const targetEmail = currentUser?.email || 'mateuszeca13@gmail.com';
+      await emailService.testEmailjs(emailjsForm, targetEmail);
+      setEmailConfigStatus(`✅ Teste enviado com sucesso para ${targetEmail}! Verifique sua caixa de entrada.`);
+    } catch (err: any) {
+      setEmailConfigStatus('❌ Erro no teste EmailJS: ' + (err.text || err.message));
+    } finally {
+      setIsTestingEmail(false);
     }
   };
 
@@ -943,10 +968,10 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Configuração de E-mail Automático */}
+      {/* Modal de Configuração de E-mail Automático (EmailJS) */}
       {isEmailSettingsOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-[#002B5C] p-4 sm:p-5 flex items-center justify-between text-white">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-[#70B32D]">
@@ -957,7 +982,7 @@ export const AdminDashboard: React.FC = () => {
                     Disparo Automático de E-mails
                   </h3>
                   <p className="text-xs text-blue-200">
-                    Integração com a Nuvem (Resend API)
+                    Integração com seu Gmail/Outlook via EmailJS (Sem precisar de domínio)
                   </p>
                 </div>
               </div>
@@ -970,24 +995,58 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveEmailConfig} className="p-5 space-y-4 text-xs">
-              <p className="text-slate-600 leading-relaxed">
-                Para que o sistema entregue o e-mail oficial formatado na caixa de entrada do professor e do aluno automaticamente pela nuvem, insira sua chave gratuita da API Resend (gerada em 1 minuto em <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-[#002B5C] font-bold underline">resend.com</a>):
-              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 space-y-2 text-[#002B5C]">
+                <p className="font-bold text-[11px] uppercase tracking-wider">Como obter suas credenciais gratuitas (2 minutos):</p>
+                <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed text-slate-700">
+                  <li>Crie uma conta gratuita em <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" className="text-[#002B5C] font-bold underline">emailjs.com</a> (200 envios/mês grátis).</li>
+                  <li>Em <strong>Email Services</strong>, conecte seu Gmail ou Outlook e copie o <strong>Service ID</strong>.</li>
+                  <li>Em <strong>Email Templates</strong>, crie um template e copie o <strong>Template ID</strong>.</li>
+                  <li>Em <strong>Account</strong>, copie sua <strong>Public Key</strong>.</li>
+                </ol>
+              </div>
 
-              <div>
-                <label className="block font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                  Chave de API Resend (re_...)
-                </label>
-                <input
-                  type="password"
-                  value={resendApiKeyInput}
-                  onChange={(e) => setResendApiKeyInput(e.target.value)}
-                  placeholder="re_123456789abcdef..."
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#002B5C] focus:bg-white"
-                />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  O plano gratuito do Resend permite 3.000 e-mails/mês sem custos.
-                </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block font-bold text-[#002B5C] uppercase tracking-wide mb-1 text-[11px]">
+                    Service ID (Ex: service_xxxxxx)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={emailjsForm.serviceId}
+                    onChange={(e) => setEmailjsForm({ ...emailjsForm, serviceId: e.target.value })}
+                    placeholder="service_gmail"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#002B5C] uppercase tracking-wide mb-1 text-[11px]">
+                    Template ID (Ex: template_xxxxxx)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={emailjsForm.templateId}
+                    onChange={(e) => setEmailjsForm({ ...emailjsForm, templateId: e.target.value })}
+                    placeholder="template_welcome_sesi"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#002B5C] uppercase tracking-wide mb-1 text-[11px]">
+                    Public Key / User ID (Ex: user_xxxxxx ou abc123xyz...)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={emailjsForm.publicKey}
+                    onChange={(e) => setEmailjsForm({ ...emailjsForm, publicKey: e.target.value })}
+                    placeholder="AbCdEfGhIjKlMnOpQ"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                  />
+                </div>
               </div>
 
               {emailConfigStatus && (
@@ -996,21 +1055,33 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               )}
 
-              <div className="border-t border-slate-100 pt-3 flex items-center justify-end gap-2">
+              <div className="border-t border-slate-100 pt-3 flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsEmailSettingsOpen(false)}
-                  className="px-4 py-2 text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                  onClick={handleTestEmailjs}
+                  disabled={isTestingEmail}
+                  className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  Cancelar
+                  <Send className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{isTestingEmail ? 'Enviando...' : 'Testar Conexão'}</span>
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSavingConfig}
-                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl font-bold shadow-md uppercase tracking-wide disabled:opacity-50 cursor-pointer"
-                >
-                  {isSavingConfig ? 'Salvando...' : 'Salvar Configuração'}
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEmailSettingsOpen(false)}
+                    className="px-4 py-2 text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingConfig}
+                    className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl font-bold shadow-md uppercase tracking-wide disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSavingConfig ? 'Salvando...' : 'Salvar Configuração'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

@@ -1,3 +1,4 @@
+import emailjs from '@emailjs/browser';
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config';
 import { SesiUnit, UserRole } from '../../types';
@@ -13,15 +14,25 @@ export interface WelcomeEmailPayload {
   siteUrl?: string;
 }
 
+export interface EmailjsConfig {
+  serviceId: string;
+  templateId: string;
+  publicKey: string;
+}
+
 export const emailService = {
   /**
-   * Obtém a chave de API do Resend configurada no Firestore
+   * Obtém as configurações do EmailJS salvas no Firestore
    */
-  getApiKey: async (): Promise<string | null> => {
+  getEmailjsConfig: async (): Promise<EmailjsConfig | null> => {
     try {
-      const snap = await getDoc(doc(db, 'settings', 'email'));
-      if (snap.exists() && snap.data().resendApiKey) {
-        return snap.data().resendApiKey;
+      const snap = await getDoc(doc(db, 'settings', 'emailjs'));
+      if (snap.exists() && snap.data().publicKey && snap.data().serviceId) {
+        return {
+          serviceId: snap.data().serviceId,
+          templateId: snap.data().templateId,
+          publicKey: snap.data().publicKey,
+        };
       }
     } catch {
       // ignore
@@ -30,17 +41,41 @@ export const emailService = {
   },
 
   /**
-   * Salva a chave de API do Resend no Firestore
+   * Salva as configurações do EmailJS no Firestore
    */
-  saveApiKey: async (resendApiKey: string): Promise<void> => {
-    await setDoc(doc(db, 'settings', 'email'), {
-      resendApiKey: resendApiKey.trim(),
+  saveEmailjsConfig: async (config: EmailjsConfig): Promise<void> => {
+    await setDoc(doc(db, 'settings', 'emailjs'), {
+      serviceId: config.serviceId.trim(),
+      templateId: config.templateId.trim(),
+      publicKey: config.publicKey.trim(),
       updatedAt: serverTimestamp(),
     }, { merge: true });
   },
 
   /**
-   * Envia o e-mail oficial formatado em Português SESI RN diretamente da nuvem
+   * Testa o disparo com os dados informados
+   */
+  testEmailjs: async (config: EmailjsConfig, testEmail: string): Promise<boolean> => {
+    const response = await emailjs.send(
+      config.serviceId.trim(),
+      config.templateId.trim(),
+      {
+        to_email: testEmail.trim(),
+        to_name: 'Usuário Teste SESI ICP',
+        user_role: 'Administrador(a)',
+        user_unit: 'SESI RN',
+        user_password: 'teste@acesso2026',
+        user_matricula: 'SESI-TESTE',
+        user_grade: 'Geral',
+        site_url: 'https://gestao-icp.vercel.app',
+      },
+      config.publicKey.trim()
+    );
+    return response.status === 200;
+  },
+
+  /**
+   * Envia o e-mail oficial formatado em Português SESI RN via EmailJS / Nuvem
    */
   sendWelcomeEmail: async (payload: WelcomeEmailPayload): Promise<{ success: boolean; method: string; message: string }> => {
     const siteUrl = payload.siteUrl || 'https://gestao-icp.vercel.app';
@@ -48,43 +83,39 @@ export const emailService = {
     const roleName = isStudent ? 'Aluno(a) Pesquisador(a)' : payload.role === 'teacher' ? 'Professor(a) Pesquisador(a) Líder' : 'Administrador(a)';
     const cleanEmail = payload.email.trim().toLowerCase();
 
-    const apiKey = await emailService.getApiKey();
-
-    let serverlessSent = false;
+    let emailjsSent = false;
     let errorMessage = '';
 
-    // Envia através do endpoint serverless da Vercel (/api/send-email)
+    // 1. Tenta envio via EmailJS
     try {
-      const res = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: cleanEmail,
-          name: payload.name,
-          role: roleName,
-          unit: payload.unit,
-          matricula: payload.matricula,
-          areaOrGrade: payload.areaOrGrade,
-          password: payload.password,
-          siteUrl,
-          apiKey,
-        }),
-      });
+      const emailjsConfig = await emailService.getEmailjsConfig();
+      if (emailjsConfig && emailjsConfig.serviceId && emailjsConfig.publicKey) {
+        const res = await emailjs.send(
+          emailjsConfig.serviceId,
+          emailjsConfig.templateId,
+          {
+            to_email: cleanEmail,
+            to_name: payload.name,
+            user_role: roleName,
+            user_unit: payload.unit,
+            user_password: payload.password,
+            user_matricula: payload.matricula || 'SESI-ICP',
+            user_grade: payload.areaOrGrade || 'Geral',
+            site_url: siteUrl,
+          },
+          emailjsConfig.publicKey
+        );
 
-      const data = await res.json();
-      if (res.ok && data.sent) {
-        serverlessSent = true;
-      } else if (data.error || data.message) {
-        errorMessage = data.error || data.message;
-        if (errorMessage.includes('own email address')) {
-          errorMessage = 'Chave Resend em modo Sandbox (envia apenas para o seu e-mail cadastrado no Resend). Use o botão abaixo para enviar.';
+        if (res.status === 200) {
+          emailjsSent = true;
         }
       }
     } catch (err: any) {
-      errorMessage = err.message;
+      errorMessage = err.text || err.message;
+      console.warn('Erro ao enviar via EmailJS:', errorMessage);
     }
 
-    // Registra na coleção de auditoria do Firestore
+    // 2. Registra auditoria no Firestore
     try {
       await addDoc(collection(db, 'mail'), {
         to: cleanEmail,
@@ -95,24 +126,26 @@ export const emailService = {
           unit: payload.unit,
         },
         createdAt: serverTimestamp(),
-        status: serverlessSent ? 'sent' : 'fallback_required',
+        status: emailjsSent ? 'sent_emailjs' : 'fallback_required',
       });
     } catch {
       // ignore
     }
 
-    if (serverlessSent) {
+    if (emailjsSent) {
       return {
         success: true,
-        method: 'cloud_smtp',
-        message: `E-mail oficial institucional entregue com sucesso para ${cleanEmail}`,
+        method: 'emailjs',
+        message: `E-mail de acesso entregue automaticamente para ${cleanEmail}`,
       };
     }
 
     return {
       success: false,
-      method: 'sandbox_or_manual',
-      message: errorMessage || `Credenciais registradas. Clique no botão "Disparar E-mail Institucional" abaixo para enviar para ${cleanEmail}.`,
+      method: 'manual',
+      message: errorMessage 
+        ? `Aviso EmailJS: ${errorMessage}. Use o botão "Disparar E-mail" abaixo.`
+        : `Credenciais registradas. Para envio 100% automático, configure o EmailJS no menu superior.`,
     };
   },
 };
