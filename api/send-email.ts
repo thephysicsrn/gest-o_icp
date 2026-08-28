@@ -5,13 +5,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { to, name, role, unit, matricula, areaOrGrade, password, siteUrl } = req.body || {};
+  const { to, name, role, unit, matricula, areaOrGrade, password, siteUrl, apiKey } = req.body || {};
 
   if (!to || !name) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendApiKey = process.env.RESEND_API_KEY || apiKey;
 
   if (resendApiKey) {
     try {
@@ -72,6 +72,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(200).json({
     sent: false,
-    message: 'Credenciais registradas no banco de dados. Para envio SMTP direto da nuvem, adicione RESEND_API_KEY nas variáveis da Vercel.',
+    message: 'Nenhuma chave Resend configurada.',
   });
 }
