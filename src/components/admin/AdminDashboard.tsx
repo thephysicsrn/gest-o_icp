@@ -27,7 +27,11 @@ import {
   Key,
   Copy,
   Check,
-  RefreshCw
+  RefreshCw,
+  Mail,
+  ExternalLink,
+  MessageSquare,
+  Globe
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -170,14 +174,31 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const getAccessMessageText = () => {
+    if (!createdCredentials) return '';
+    const roleName = createdCredentials.role === 'teacher' ? 'Professor(a) Pesquisador(a) Líder' : createdCredentials.role === 'student' ? 'Aluno(a) Pesquisador(a)' : 'Administrador(a)';
+    const siteUrl = window.location.origin;
+    return `Olá, ${createdCredentials.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN foi concluído com sucesso como ${roleName}.\n\n🌐 Portal de Acesso ao Sistema:\n${siteUrl}\n\n📌 Seus Dados de Acesso:\n• E-mail: ${createdCredentials.email}\n• Senha Provisória: ${createdCredentials.password}\n• Polo SESI: ${createdCredentials.unit}\n\nAcesse o link acima para realizar seu login institucional, abrir seu grupo de pesquisa e cadastrar suas linhas científicas!\n\nAtenciosamente,\nCoordenação Regional de Iniciação Científica - SESI RN`;
+  };
+
   const handleCopyAccessMessage = () => {
-    if (!createdCredentials) return;
-    const roleName = createdCredentials.role === 'teacher' ? 'Professor(a)' : createdCredentials.role === 'student' ? 'Aluno(a)' : 'Administrador(a)';
-    const text = `Olá, ${createdCredentials.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN foi realizado com sucesso como ${roleName}.\n\n📌 Dados de Acesso:\n• E-mail: ${createdCredentials.email}\n• Senha Provisória: ${createdCredentials.password}\n• Polo SESI: ${createdCredentials.unit}\n\nAcesse a plataforma para gerenciar seus grupos e linhas de pesquisa!`;
-    
+    const text = getAccessMessageText();
+    if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedMessage(true);
     setTimeout(() => setCopiedMessage(false), 3000);
+  };
+
+  const handleSendEmailViaClient = () => {
+    if (!createdCredentials) return;
+    const subject = encodeURIComponent('Acesso ao Sistema de Iniciação Científica (ICP) - SESI RN');
+    const body = encodeURIComponent(getAccessMessageText());
+    window.open(`mailto:${createdCredentials.email}?subject=${subject}&body=${body}`, '_blank');
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = encodeURIComponent(getAccessMessageText());
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
 
   const handleDeleteUser = async (user: UserProfile) => {
@@ -546,49 +567,84 @@ export const AdminDashboard: React.FC = () => {
                     Cadastro Realizado com Sucesso!
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Copie as credenciais abaixo para informar o acesso ao usuário:
+                    Dispare as credenciais por e-mail ou copie a mensagem pronta:
                   </p>
                 </div>
 
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3 font-sans">
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2.5 font-sans text-xs">
                   <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                    <span className="text-xs text-slate-500 font-semibold">Nome Completo</span>
-                    <span className="text-xs font-bold text-[#002B5C]">{createdCredentials.name}</span>
+                    <span className="text-slate-500 font-semibold">Nome Completo</span>
+                    <span className="font-bold text-[#002B5C]">{createdCredentials.name}</span>
                   </div>
                   <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                    <span className="text-xs text-slate-500 font-semibold">E-mail de Acesso</span>
-                    <span className="text-xs font-bold text-slate-900 font-mono">{createdCredentials.email}</span>
+                    <span className="text-slate-500 font-semibold">E-mail de Acesso</span>
+                    <span className="font-bold text-slate-900 font-mono">{createdCredentials.email}</span>
                   </div>
                   <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                    <span className="text-xs text-slate-500 font-semibold">Senha Inicial</span>
-                    <span className="text-xs font-extrabold text-[#528521] bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 font-mono tracking-wider">
+                    <span className="text-slate-500 font-semibold">Senha Inicial</span>
+                    <span className="font-extrabold text-[#528521] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 font-mono tracking-wider">
                       {createdCredentials.password}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500 font-semibold">Polo SESI</span>
-                    <span className="text-xs font-semibold text-slate-700">{createdCredentials.unit}</span>
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                    <span className="text-slate-500 font-semibold">Polo SESI</span>
+                    <span className="font-semibold text-slate-700">{createdCredentials.unit}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-0.5">
+                    <span className="text-slate-500 font-semibold flex items-center gap-1">
+                      <Globe className="w-3.5 h-3.5 text-[#002B5C]" />
+                      Link do Portal
+                    </span>
+                    <a
+                      href={window.location.origin}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-bold text-[#002B5C] hover:underline flex items-center gap-1 font-mono text-[11px]"
+                    >
+                      {window.location.origin.replace(/^https?:\/\//, '')}
+                      <ExternalLink className="w-3 h-3 text-[#70B32D]" />
+                    </a>
                   </div>
                 </div>
 
                 <div className="pt-2 space-y-2">
                   <button
                     type="button"
-                    onClick={handleCopyAccessMessage}
+                    onClick={handleSendEmailViaClient}
                     className="w-full bg-[#002B5C] hover:bg-[#003B71] text-white py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
                   >
-                    {copiedMessage ? (
-                      <>
-                        <Check className="w-4 h-4 text-[#70B32D]" />
-                        <span>Mensagem Copiada para a Área de Transferência!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4 text-[#70B32D]" />
-                        <span>Copiar Mensagem Pronta de Acesso</span>
-                      </>
-                    )}
+                    <Mail className="w-4 h-4 text-[#70B32D]" />
+                    <span>Disparar E-mail Institucional para o Professor</span>
                   </button>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCopyAccessMessage}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-slate-200"
+                    >
+                      {copiedMessage ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-600" />
+                          <span>Mensagem Copiada!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 text-slate-600" />
+                          <span>Copiar Mensagem</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleShareWhatsApp}
+                      className="bg-emerald-50 hover:bg-emerald-100 text-[#528521] border border-emerald-200 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Enviar via WhatsApp</span>
+                    </button>
+                  </div>
 
                   <button
                     type="button"
@@ -596,7 +652,7 @@ export const AdminDashboard: React.FC = () => {
                       setCreatedCredentials(null);
                       setIsModalOpen(false);
                     }}
-                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                    className="w-full bg-slate-50 hover:bg-slate-100 text-slate-500 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer mt-1"
                   >
                     Concluir e Fechar
                   </button>
