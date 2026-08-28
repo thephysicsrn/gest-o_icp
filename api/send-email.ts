@@ -64,6 +64,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        return res.status(200).json({ sent: false, error: data.message || 'Erro no provedor de e-mail Resend' });
+      }
       return res.status(200).json({ sent: true, data });
     } catch (error: any) {
       return res.status(500).json({ error: error.message });

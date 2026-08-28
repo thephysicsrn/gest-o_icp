@@ -51,7 +51,7 @@ export const emailService = {
     const apiKey = await emailService.getApiKey();
 
     let serverlessSent = false;
-    let resendMessage = '';
+    let errorMessage = '';
 
     // Envia através do endpoint serverless da Vercel (/api/send-email)
     try {
@@ -70,15 +70,18 @@ export const emailService = {
           apiKey,
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.sent) {
-          serverlessSent = true;
-          resendMessage = `E-mail oficial institucional entregue com sucesso para ${cleanEmail}`;
+
+      const data = await res.json();
+      if (res.ok && data.sent) {
+        serverlessSent = true;
+      } else if (data.error || data.message) {
+        errorMessage = data.error || data.message;
+        if (errorMessage.includes('own email address')) {
+          errorMessage = 'Chave Resend em modo Sandbox (envia apenas para o seu e-mail cadastrado no Resend). Use o botão abaixo para enviar.';
         }
       }
     } catch (err: any) {
-      console.warn('Erro ao chamar /api/send-email:', err.message);
+      errorMessage = err.message;
     }
 
     // Registra na coleção de auditoria do Firestore
@@ -92,7 +95,7 @@ export const emailService = {
           unit: payload.unit,
         },
         createdAt: serverTimestamp(),
-        status: serverlessSent ? 'sent' : 'queued',
+        status: serverlessSent ? 'sent' : 'fallback_required',
       });
     } catch {
       // ignore
@@ -102,14 +105,14 @@ export const emailService = {
       return {
         success: true,
         method: 'cloud_smtp',
-        message: resendMessage || `E-mail oficial formatado entregue na caixa de entrada de ${cleanEmail}`,
+        message: `E-mail oficial institucional entregue com sucesso para ${cleanEmail}`,
       };
     }
 
     return {
-      success: true,
-      method: 'registered',
-      message: `Credenciais registradas para ${cleanEmail}. Você também pode usar os botões abaixo para envio imediato.`,
+      success: false,
+      method: 'sandbox_or_manual',
+      message: errorMessage || `Credenciais registradas. Clique no botão "Disparar E-mail Institucional" abaixo para enviar para ${cleanEmail}.`,
     };
   },
 };
