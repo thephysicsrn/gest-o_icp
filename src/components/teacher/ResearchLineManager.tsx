@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ResearchGroup, ResearchLine, UserProfile } from '../../types';
 import { groupService } from '../../firebase/services/groupService';
+import { StudentRegisterModal } from './StudentRegisterModal';
 import { 
   Layers, 
   Users, 
@@ -10,7 +11,8 @@ import {
   AlertCircle, 
   CheckCircle, 
   Info,
-  X
+  X,
+  UserPlus
 } from 'lucide-react';
 
 interface Props {
@@ -27,6 +29,7 @@ export const ResearchLineManager: React.FC<Props> = ({
   onRefresh,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [editingLine, setEditingLine] = useState<ResearchLine | null>(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -122,6 +125,7 @@ export const ResearchLineManager: React.FC<Props> = ({
       } else {
         await groupService.createLine({
           groupId: group.id,
+          lineNumber: lines.length + 1,
           title: formData.title,
           area: formData.area,
           description: formData.description,
@@ -248,104 +252,102 @@ export const ResearchLineManager: React.FC<Props> = ({
       <div className="space-y-4">
         {lines.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-8 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-[#002B5C] flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#002B5C] flex items-center justify-center mx-auto">
               <Layers className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-[#002B5C]">Nenhuma Linha de Pesquisa Cadastrada</h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Cadastre até 5 linhas temáticas de pesquisa e vincule até 3 alunos para cada linha para começar a orientar.
+            <h3 className="text-sm font-bold text-slate-800">Nenhuma linha de pesquisa criada ainda</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Crie as linhas temáticas do seu grupo (máximo 5) e vincule até 3 alunos pesquisadores a cada uma.
             </p>
             <button
               onClick={handleOpenCreate}
-              className="bg-[#002B5C] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md"
+              className="bg-[#002B5C] hover:bg-[#003B71] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm inline-flex items-center gap-1.5"
             >
-              Criar Primeira Linha
+              <Plus className="w-4 h-4 text-[#70B32D]" />
+              <span>Criar Linha 01</span>
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {lines.map((line) => (
               <div 
-                key={line.id}
-                className="bg-white rounded-2xl border border-slate-200 hover:border-[#002B5C] transition-all p-5 space-y-4 shadow-xs hover:shadow-md"
+                key={line.id} 
+                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
               >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div className="space-y-1.5">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="bg-[#002B5C] text-white font-bold text-xs px-2.5 py-0.5 rounded-md">
-                        Linha 0{line.lineNumber}
+                      <span className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 text-[#002B5C] font-black text-xs flex items-center justify-center shrink-0">
+                        0{line.lineNumber}
                       </span>
-                      <span className="text-xs text-[#528521] bg-emerald-50 border border-emerald-200 font-bold px-2 py-0.5 rounded">
-                        {line.area}
-                      </span>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 leading-snug">
+                          {line.title}
+                        </h4>
+                        <span className="text-[11px] font-semibold text-[#528521] uppercase tracking-wide">
+                          {line.area}
+                        </span>
+                      </div>
                     </div>
-                    <h3 className="text-base font-bold text-[#002B5C]">
-                      {line.title}
-                    </h3>
-                    <p className="text-xs text-slate-600 leading-relaxed max-w-4xl">
-                      {line.description}
-                    </p>
-                  </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-start">
-                    <button
-                      onClick={() => handleOpenEdit(line)}
-                      className="p-2 text-slate-400 hover:text-[#002B5C] hover:bg-slate-100 rounded-xl transition-colors"
-                      title="Editar Linha e Alunos"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteLine(line)}
-                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-xl transition-colors"
-                      title="Excluir Linha"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Alunos Vinculados (Máximo 3) */}
-                <div className="border-t border-slate-100 pt-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-[#002B5C] font-bold uppercase tracking-wider flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-[#70B32D]" />
-                      Alunos Matriculados ({line.studentIds.length}/3)
-                    </span>
-                    {line.studentIds.length < 3 && (
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => handleOpenEdit(line)}
-                        className="text-xs text-[#70B32D] hover:underline font-bold"
+                        title="Editar Linha"
+                        className="p-1.5 text-slate-400 hover:text-[#002B5C] hover:bg-slate-100 rounded-lg transition-colors"
                       >
-                        + Vincular Aluno
+                        <Edit2 className="w-4 h-4" />
                       </button>
-                    )}
+                      <button
+                        onClick={() => handleDeleteLine(line)}
+                        title="Excluir Linha"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {line.description && (
+                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                      {line.description}
+                    </p>
+                  )}
+                </div>
+
+                {/* Alunos Vinculados */}
+                <div className="border-t border-slate-100 pt-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#002B5C] uppercase tracking-wide flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-[#528521]" />
+                      Alunos Pesquisadores ({line.studentIds.length}/3)
+                    </span>
                   </div>
 
                   {line.studentIds.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                      Nenhum aluno vinculado a esta linha ainda. Clique em editar para selecionar até 3 alunos.
+                    <p className="text-xs text-slate-400 italic bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
+                      Nenhum aluno vinculado a esta linha.
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="space-y-1.5">
                       {line.studentIds.map((studentId) => {
-                        const studentObj = unitStudents.find(s => s.uid === studentId);
+                        const student = unitStudents.find(s => s.uid === studentId);
                         return (
                           <div 
                             key={studentId}
-                            className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center gap-2.5"
+                            className="bg-slate-50 border border-slate-200/80 p-2 rounded-xl text-xs flex items-center justify-between"
                           >
-                            <div className="w-7 h-7 rounded-lg bg-emerald-100 border border-emerald-200 text-[#528521] flex items-center justify-center text-xs font-bold shrink-0">
-                              {studentObj ? studentObj.name.charAt(0) : 'A'}
-                            </div>
-                            <div className="truncate">
-                              <p className="text-xs font-bold text-[#002B5C] truncate">
-                                {studentObj ? studentObj.name : 'Aluno Cadastrado'}
+                            <div className="truncate mr-2">
+                              <p className="font-semibold text-slate-900 truncate">
+                                {student ? student.name : 'Aluno Cadastrado'}
                               </p>
-                              <p className="text-xs text-slate-500 truncate">
-                                {studentObj?.areaOrGrade || studentObj?.matricula || 'SESI'}
+                              <p className="text-[11px] text-slate-500 truncate font-mono">
+                                {student?.matricula || student?.email}
                               </p>
                             </div>
+                            <span className="text-[10px] bg-emerald-100 text-[#528521] font-bold px-2 py-0.5 rounded-full shrink-0">
+                              Ativo
+                            </span>
                           </div>
                         );
                       })}
@@ -359,28 +361,31 @@ export const ResearchLineManager: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Modal Adicionar / Editar Linha */}
+      {/* Modal de Criação / Edição de Linha */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             
-            <div className="bg-[#002B5C] p-4 flex items-center justify-between text-white">
+            <div className="bg-[#002B5C] px-6 py-4 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-[#70B32D]" />
-                <h3 className="font-bold text-sm text-white uppercase tracking-wider">
-                  {editingLine ? `Editar Linha 0${editingLine.lineNumber}` : `Nova Linha de Pesquisa (0${lines.length + 1})`}
+                <Layers className="w-5 h-5 text-[#70B32D]" />
+                <h3 className="text-sm font-bold tracking-wide uppercase">
+                  {editingLine ? `Editar Linha 0${editingLine.lineNumber}` : `Criar Nova Linha 0${lines.length + 1}`}
                 </h3>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-white/70 hover:text-white">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveLine} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+            <form onSubmit={handleSaveLine} className="p-6 space-y-4 overflow-y-auto">
               
               {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
@@ -394,7 +399,7 @@ export const ResearchLineManager: React.FC<Props> = ({
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Ex: Sensores IoT para Monitoramento da Qualidade da Água"
+                  placeholder="Ex: Desenvolvimento de Bioplásticos a partir de Resíduos Agroindustriais"
                   className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:border-[#002B5C] focus:bg-white focus:outline-none"
                 />
               </div>
@@ -432,16 +437,36 @@ export const ResearchLineManager: React.FC<Props> = ({
                   <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide">
                     Vincular Alunos da Unidade ({formData.selectedStudentIds.length}/3)
                   </label>
-                  <span className="text-xs font-bold text-[#528521]">
-                    Limite: 3 Alunos
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-[#528521]">
+                      Limite: 3 Alunos
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsStudentModalOpen(true)}
+                      className="text-[11px] font-bold text-[#002B5C] hover:text-[#70B32D] flex items-center gap-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <UserPlus className="w-3 h-3 text-[#70B32D]" />
+                      <span>+ Cadastrar Aluno</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5 max-h-44 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-slate-50">
+                <div className="space-y-1.5 max-h-48 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-slate-50">
                   {unitStudents.length === 0 ? (
-                    <p className="text-xs text-slate-500 p-2 text-center">
-                      Nenhum aluno cadastrado nesta unidade escolar.
-                    </p>
+                    <div className="text-center py-4 px-2 space-y-2">
+                      <p className="text-xs text-slate-500 font-medium">
+                        Nenhum aluno cadastrado nesta unidade escolar ({group.unit}).
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsStudentModalOpen(true)}
+                        className="bg-[#002B5C] hover:bg-[#003B71] text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 text-[#70B32D]" />
+                        <span>Cadastrar Aluno Nesta Unidade</span>
+                      </button>
+                    </div>
                   ) : (
                     unitStudents.map((student) => {
                       const isSelected = formData.selectedStudentIds.includes(student.uid);
@@ -485,7 +510,7 @@ export const ResearchLineManager: React.FC<Props> = ({
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md"
+                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer"
                 >
                   {isSaving ? 'Salvando...' : editingLine ? 'Salvar Alterações' : 'Criar Linha'}
                 </button>
@@ -495,6 +520,21 @@ export const ResearchLineManager: React.FC<Props> = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Cadastro Rápido de Aluno */}
+      <StudentRegisterModal
+        isOpen={isStudentModalOpen}
+        onClose={() => setIsStudentModalOpen(false)}
+        unit={group.unit}
+        onStudentCreated={(newStudent) => {
+          if (formData.selectedStudentIds.length < 3) {
+            setFormData(prev => ({
+              ...prev,
+              selectedStudentIds: [...prev.selectedStudentIds, newStudent.uid],
+            }));
+          }
+        }}
+      />
 
     </div>
   );

@@ -40,14 +40,22 @@ export const activityService = {
     return snap.docs.map(d => toTask(d.data(), d.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 
-  getTasksByStudent: async (studentId: string, _groupId?: string): Promise<ActivityTask[]> => {
+  getTasksByStudent: async (studentId: string): Promise<ActivityTask[]> => {
     const q = query(collection(db, 'tasks'), where('targetStudentId', '==', studentId));
     const snap = await getDocs(q);
     return snap.docs.map(d => toTask(d.data(), d.id));
   },
 
-  getTasksForStudent: async (studentId: string, _groupId?: string): Promise<ActivityTask[]> => {
-    return activityService.getTasksByStudent(studentId, _groupId);
+  getTasksForStudent: async (studentId: string, lineId?: string, groupId?: string): Promise<ActivityTask[]> => {
+    if (lineId) {
+      const lineTasks = await activityService.getTasksByLine(lineId);
+      return lineTasks.filter(t => !t.targetStudentId || t.targetStudentId === studentId);
+    }
+    if (groupId) {
+      const groupTasks = await activityService.getTasksByGroup(groupId);
+      return groupTasks.filter(t => !t.targetStudentId || t.targetStudentId === studentId);
+    }
+    return activityService.getTasksByStudent(studentId);
   },
 
   getTasksByLine: async (lineId: string): Promise<ActivityTask[]> => {

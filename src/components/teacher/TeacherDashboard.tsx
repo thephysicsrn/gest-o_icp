@@ -6,6 +6,7 @@ import {
 } from '../../types';
 import { groupService } from '../../firebase/services/groupService';
 import { ResearchLineManager } from './ResearchLineManager';
+import { StudentUnitManager } from './StudentUnitManager';
 import { AttendanceManager } from './AttendanceManager';
 import { ActivityBoardManager } from './ActivityBoardManager';
 import { PrivateRoomManager } from './PrivateRoomManager';
@@ -14,6 +15,7 @@ import { TeacherPhotoGallery } from './TeacherPhotoGallery';
 import { 
   GraduationCap, 
   Layers, 
+  Users,
   Calendar, 
   CheckSquare, 
   FolderLock, 
@@ -26,7 +28,7 @@ export const TeacherDashboard: React.FC = () => {
   const { currentUser, allUsers } = useAuth();
   const [group, setGroup] = useState<ResearchGroup | null>(null);
   const [lines, setLines] = useState<ResearchLine[]>([]);
-  const [activeTab, setActiveTab] = useState<'lines' | 'attendance' | 'activities' | 'private_room' | 'logbooks' | 'photos'>('lines');
+  const [activeTab, setActiveTab] = useState<'lines' | 'students' | 'attendance' | 'activities' | 'private_room' | 'logbooks' | 'photos'>('lines');
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal de criação de grupo se o professor ainda não tiver um grupo
@@ -217,6 +219,18 @@ export const TeacherDashboard: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('students')}
+          className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs transition-all flex items-center justify-center gap-2 ${
+            activeTab === 'students'
+              ? 'bg-[#002B5C] text-white font-bold shadow-md'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
+          }`}
+        >
+          <Users className={`w-4 h-4 ${activeTab === 'students' ? 'text-[#70B32D]' : 'text-slate-400'}`} />
+          <span>Alunos da Unidade ({unitStudents.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('attendance')}
           className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs transition-all flex items-center justify-center gap-2 ${
             activeTab === 'attendance'
@@ -284,6 +298,16 @@ export const TeacherDashboard: React.FC = () => {
             group={group}
             lines={lines}
             unitStudents={unitStudents}
+            onRefresh={loadTeacherData}
+          />
+        )}
+
+        {activeTab === 'students' && currentUser && (
+          <StudentUnitManager
+            group={group}
+            lines={lines}
+            unitStudents={unitStudents}
+            unit={currentUser.unit}
             onRefresh={loadTeacherData}
           />
         )}
