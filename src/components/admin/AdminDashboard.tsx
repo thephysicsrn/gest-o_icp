@@ -38,18 +38,25 @@ import {
   Lock,
   ShieldAlert,
   Eye,
-  EyeOff
+  EyeOff,
+  ArrowRightLeft,
+  Plus,
+  Edit2,
+  FolderPlus,
+  HelpCircle,
+  UserCheck
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const { allUsers, reloadUsers, currentUser } = useAuth();
+  const [activeAdminTab, setActiveAdminTab] = useState<'users' | 'groups' | 'transfers' | 'settings'>('users');
   const [groups, setGroups] = useState<ResearchGroup[]>([]);
   const [lines, setLines] = useState<ResearchLine[]>([]);
   const [selectedUnit, setSelectedUnit] = useState<string>('TODAS');
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | UserRole>('ALL');
 
-  // Estado do Modal
+  // Estado do Modal de Usuário
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [modalFormData, setModalFormData] = useState({
@@ -65,28 +72,37 @@ export const AdminDashboard: React.FC = () => {
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalSuccess, setModalSuccess] = useState<string | null>(null);
 
-  const loadData = async () => {
-    const fetchedGroups = await groupService.getAllGroups();
-    const fetchedLines = await groupService.getAllLines();
-    setGroups(fetchedGroups);
-    setLines(fetchedLines);
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // Usuários Filtrados
-  const filteredUsers = allUsers.filter((user) => {
-    const matchesUnit = selectedUnit === 'TODAS' || user.unit === selectedUnit;
-    const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
-    const matchesSearch = 
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.matricula.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesUnit && matchesRole && matchesSearch;
+  // Estado do Modal de Grupo de Pesquisa
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<ResearchGroup | null>(null);
+  const [groupFormData, setGroupFormData] = useState({
+    title: '',
+    description: '',
+    unit: 'SESI SÃO GONÇALO DO AMARANTE' as SesiUnit,
+    leaderTeacherId: '',
   });
+  const [groupModalError, setGroupModalError] = useState<string | null>(null);
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
 
+  // Estado do Modal de Linha de Pesquisa
+  const [isLineModalOpen, setIsLineModalOpen] = useState(false);
+  const [editingLine, setEditingLine] = useState<ResearchLine | null>(null);
+  const [targetGroupForLine, setTargetGroupForLine] = useState<ResearchGroup | null>(null);
+  const [lineFormData, setLineFormData] = useState({
+    title: '',
+    area: '',
+    description: '',
+  });
+  const [lineModalError, setLineModalError] = useState<string | null>(null);
+  const [isSavingLine, setIsSavingLine] = useState(false);
+
+  // Estado de Transferência de Aluno
+  const [transferringStudent, setTransferringStudent] = useState<UserProfile | null>(null);
+  const [selectedTargetLineId, setSelectedTargetLineId] = useState<string>('UNASSIGN');
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [transferToast, setTransferToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Credenciais Geradas e Notificação de E-mail
   const [createdCredentials, setCreatedCredentials] = useState<{
     name: string;
     email: string;
@@ -116,6 +132,50 @@ export const AdminDashboard: React.FC = () => {
   const [emailConfigStatus, setEmailConfigStatus] = useState<string | null>(null);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isTestingEmail, setIsTestingEmail] = useState(false);
+
+  const loadData = async () => {
+    const fetchedGroups = await groupService.getAllGroups();
+    const fetchedLines = await groupService.getAllLines();
+    setGroups(fetchedGroups);
+    setLines(fetchedLines);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const teachersList = allUsers.filter(u => u.role === 'teacher');
+  const studentsList = allUsers.filter(u => u.role === 'student');
+
+  // Usuários Filtrados
+  const filteredUsers = allUsers.filter((user) => {
+    const matchesUnit = selectedUnit === 'TODAS' || user.unit === selectedUnit;
+    const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
+    const matchesSearch = 
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.matricula.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesUnit && matchesRole && matchesSearch;
+  });
+
+  // Alunos Filtrados para Transferência
+  const filteredStudents = studentsList.filter((student) => {
+    const matchesUnit = selectedUnit === 'TODAS' || student.unit === selectedUnit;
+    const matchesSearch = 
+      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.matricula?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesUnit && matchesSearch;
+  });
+
+  // Grupos Filtrados
+  const filteredGroups = groups.filter((group) => {
+    const matchesUnit = selectedUnit === 'TODAS' || group.unit === selectedUnit;
+    const matchesSearch = 
+      group.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      group.leaderTeacherName.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesUnit && matchesSearch;
+  });
 
   const handleOpenEmailSettings = () => {
     setEnteredPassword('');
@@ -226,6 +286,20 @@ export const AdminDashboard: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const handleDeleteUser = async (user: UserProfile) => {
+    if (confirm(`Tem certeza que deseja excluir o usuário "${user.name}" (${user.email})? Esta ação não pode ser desfeita.`)) {
+      try {
+        await authService.deleteUser(user.uid, user.email);
+        await reloadUsers();
+        await loadData();
+      } catch (err: any) {
+        alert('Erro ao excluir usuário: ' + err.message);
+      }
+    }
+  };
+
+  const OFFICIAL_SITE_URL = 'https://gestao-icp.vercel.app';
+
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setModalError(null);
@@ -261,7 +335,6 @@ export const AdminDashboard: React.FC = () => {
           areaOrGrade: modalFormData.areaOrGrade,
         });
 
-        // Disparo automático do e-mail em segundo plano
         setIsSendingEmail(true);
         setEmailSentStatus('Enviando dados de acesso para a caixa de entrada...');
         emailService.sendWelcomeEmail({
@@ -280,390 +353,1192 @@ export const AdminDashboard: React.FC = () => {
         });
       }
     } catch (err: any) {
-      setModalError(err.message || 'Erro ao salvar usuário.');
+      setModalError(err.message || 'Erro ao processar solicitação.');
     }
   };
 
-  const OFFICIAL_SITE_URL = 'https://gestao-icp.vercel.app';
-
-  const getAccessMessageText = () => {
-    if (!createdCredentials) return '';
-    const isStudent = createdCredentials.role === 'student';
-    const roleName = isStudent ? 'Aluno(a) Pesquisador(a)' : createdCredentials.role === 'teacher' ? 'Professor(a) Pesquisador(a) Líder' : 'Administrador(a)';
-    const customDetail = createdCredentials.areaOrGrade 
-      ? (isStudent ? `• Série / Turma: ${createdCredentials.areaOrGrade}\n` : `• Área de Atuação: ${createdCredentials.areaOrGrade}\n`) 
-      : '';
-    const matriculaDetail = createdCredentials.matricula ? `• Matrícula SESI: ${createdCredentials.matricula}\n` : '';
-    const actionText = isStudent 
-      ? 'Acesse o link acima para acompanhar sua linha de pesquisa, preencher o Diário de Bordo Científico e registrar suas atividades!'
-      : 'Acesse o link acima para realizar seu login institucional, abrir seu grupo de pesquisa e cadastrar suas linhas científicas!';
-
-    return `Olá, ${createdCredentials.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN foi concluído com sucesso como ${roleName}.\n\n🌐 Portal de Acesso ao Sistema:\n${OFFICIAL_SITE_URL}\n\n📌 Seus Dados de Acesso:\n• E-mail: ${createdCredentials.email}\n• Senha Provisória: ${createdCredentials.password}\n• Polo SESI: ${createdCredentials.unit}\n${matriculaDetail}${customDetail}\n${actionText}\n\nAtenciosamente,\nCoordenação Regional de Iniciação Científica - SESI RN`;
+  // ==========================================
+  // FUNÇÕES DE GESTÃO DE GRUPOS
+  // ==========================================
+  const handleOpenCreateGroup = () => {
+    setEditingGroup(null);
+    setGroupFormData({
+      title: '',
+      description: '',
+      unit: 'SESI SÃO GONÇALO DO AMARANTE',
+      leaderTeacherId: teachersList[0]?.uid || '',
+    });
+    setGroupModalError(null);
+    setIsGroupModalOpen(true);
   };
 
-  const handleCopyAccessMessage = () => {
-    const text = getAccessMessageText();
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopiedMessage(true);
-    setTimeout(() => setCopiedMessage(false), 3000);
+  const handleOpenEditGroup = (group: ResearchGroup) => {
+    setEditingGroup(group);
+    setGroupFormData({
+      title: group.title,
+      description: group.description,
+      unit: group.unit,
+      leaderTeacherId: group.leaderTeacherId,
+    });
+    setGroupModalError(null);
+    setIsGroupModalOpen(true);
   };
 
-  const handleSendEmailViaClient = () => {
-    if (!createdCredentials) return;
-    const subject = encodeURIComponent('Acesso ao Sistema de Iniciação Científica (ICP) - SESI RN');
-    const body = encodeURIComponent(getAccessMessageText());
-    window.open(`mailto:${createdCredentials.email}?subject=${subject}&body=${body}`, '_blank');
-  };
+  const handleSaveGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGroupModalError(null);
 
-  const handleShareWhatsApp = () => {
-    const text = encodeURIComponent(getAccessMessageText());
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-  };
-
-  const handleDeleteUser = async (user: UserProfile) => {
-    if (user.uid === currentUser?.uid) {
-      alert('Você não pode excluir o próprio usuário logado.');
+    if (!groupFormData.title) {
+      setGroupModalError('O título do grupo de pesquisa é obrigatório.');
       return;
     }
-    const roleText = user.role === 'teacher' ? 'o(a) professor(a)' : user.role === 'student' ? 'o(a) aluno(a)' : 'o administrador';
-    if (confirm(`Tem certeza que deseja excluir permanentemente ${roleText} ${user.name} (${user.email})? Esta ação removerá o usuário do banco de dados e de todas as linhas de pesquisa.`)) {
-      await authService.deleteUser(user.uid, user.email);
-      await reloadUsers();
+
+    const selectedTeacher = teachersList.find(t => t.uid === groupFormData.leaderTeacherId);
+    if (!selectedTeacher) {
+      setGroupModalError('Selecione um professor orientador líder válido.');
+      return;
+    }
+
+    setIsSavingGroup(true);
+    try {
+      if (editingGroup) {
+        await groupService.updateGroup(editingGroup.id, {
+          title: groupFormData.title.trim(),
+          description: groupFormData.description.trim(),
+          unit: groupFormData.unit,
+          leaderTeacherId: selectedTeacher.uid,
+          leaderTeacherName: selectedTeacher.name,
+        });
+      } else {
+        await groupService.createGroup({
+          title: groupFormData.title.trim(),
+          description: groupFormData.description.trim() || 'Grupo de pesquisa institucional de iniciação científica SESI ICP.',
+          unit: groupFormData.unit,
+          leaderTeacherId: selectedTeacher.uid,
+          leaderTeacherName: selectedTeacher.name,
+        });
+      }
+
+      await loadData();
+      setIsGroupModalOpen(false);
+    } catch (err: any) {
+      setGroupModalError(err.message || 'Erro ao salvar grupo de pesquisa.');
+    } finally {
+      setIsSavingGroup(false);
+    }
+  };
+
+  const handleDeleteGroup = async (group: ResearchGroup) => {
+    if (confirm(`Atenção: Deseja realmente excluir o grupo "${group.title}" e todas as suas linhas de pesquisa? Esta ação é irreversível.`)) {
+      try {
+        await groupService.deleteGroupWithLines(group.id);
+        await loadData();
+      } catch (err: any) {
+        alert('Erro ao excluir grupo: ' + err.message);
+      }
+    }
+  };
+
+  // ==========================================
+  // FUNÇÕES DE GESTÃO DE LINHAS DE PESQUISA
+  // ==========================================
+  const handleOpenCreateLine = (group: ResearchGroup) => {
+    const groupLines = lines.filter(l => l.groupId === group.id);
+    if (groupLines.length >= 5) {
+      alert('Limite atingido! Cada grupo pode ter no máximo 5 linhas de pesquisa.');
+      return;
+    }
+    setTargetGroupForLine(group);
+    setEditingLine(null);
+    setLineFormData({
+      title: '',
+      area: '',
+      description: '',
+    });
+    setLineModalError(null);
+    setIsLineModalOpen(true);
+  };
+
+  const handleOpenEditLine = (group: ResearchGroup, line: ResearchLine) => {
+    setTargetGroupForLine(group);
+    setEditingLine(line);
+    setLineFormData({
+      title: line.title,
+      area: line.area,
+      description: line.description,
+    });
+    setLineModalError(null);
+    setIsLineModalOpen(true);
+  };
+
+  const handleSaveLine = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLineModalError(null);
+
+    if (!targetGroupForLine) return;
+    if (!lineFormData.title || !lineFormData.area) {
+      setLineModalError('Título e Área Temática são obrigatórios.');
+      return;
+    }
+
+    setIsSavingLine(true);
+    try {
+      if (editingLine) {
+        await groupService.updateLine(editingLine.id, {
+          title: lineFormData.title.trim(),
+          area: lineFormData.area.trim(),
+          description: lineFormData.description.trim(),
+        });
+      } else {
+        const groupLines = lines.filter(l => l.groupId === targetGroupForLine.id);
+        await groupService.createLine({
+          groupId: targetGroupForLine.id,
+          lineNumber: groupLines.length + 1,
+          title: lineFormData.title.trim(),
+          area: lineFormData.area.trim(),
+          description: lineFormData.description.trim(),
+          studentIds: [],
+          studentNames: [],
+        });
+      }
+
+      await loadData();
+      setIsLineModalOpen(false);
+    } catch (err: any) {
+      setLineModalError(err.message || 'Erro ao salvar linha de pesquisa.');
+    } finally {
+      setIsSavingLine(false);
+    }
+  };
+
+  const handleDeleteLine = async (line: ResearchLine) => {
+    if (confirm(`Deseja realmente remover a linha "${line.title}"? Os alunos vinculados ficarão sem linha.`)) {
+      try {
+        await groupService.deleteLine(line.id);
+        await loadData();
+      } catch (err: any) {
+        alert('Erro ao excluir linha: ' + err.message);
+      }
+    }
+  };
+
+  // ==========================================
+  // FUNÇÕES DE TRANSFERÊNCIA DE ALUNOS
+  // ==========================================
+  const getStudentCurrentAllocation = (studentId: string) => {
+    const line = lines.find(l => l.studentIds.includes(studentId));
+    if (!line) return null;
+    const group = groups.find(g => g.id === line.groupId);
+    return { line, group };
+  };
+
+  const handleOpenTransferModal = (student: UserProfile) => {
+    setTransferringStudent(student);
+    const alloc = getStudentCurrentAllocation(student.uid);
+    setSelectedTargetLineId(alloc ? alloc.line.id : 'UNASSIGN');
+  };
+
+  const handleExecuteTransfer = async () => {
+    if (!transferringStudent) return;
+    setIsTransferring(true);
+    try {
+      const targetLineId = selectedTargetLineId === 'UNASSIGN' ? null : selectedTargetLineId;
+      await groupService.transferStudent(transferringStudent.uid, transferringStudent.name, targetLineId);
+      await loadData();
+      setTransferToast({
+        message: targetLineId 
+          ? `Aluno(a) ${transferringStudent.name} transferido(a) com sucesso!` 
+          : `Aluno(a) ${transferringStudent.name} desvinculado(a) e definido(a) como Livre com sucesso!`,
+        type: 'success',
+      });
+      setTimeout(() => setTransferToast(null), 4000);
+      setTransferringStudent(null);
+    } catch (err: any) {
+      setTransferToast({
+        message: 'Erro na transferência: ' + err.message,
+        type: 'error',
+      });
+      setTimeout(() => setTransferToast(null), 5000);
+    } finally {
+      setIsTransferring(false);
     }
   };
 
   const totalTeachers = allUsers.filter(u => u.role === 'teacher').length;
   const totalStudents = allUsers.filter(u => u.role === 'student').length;
+  const assignedStudentsCount = studentsList.filter(s => getStudentCurrentAllocation(s.uid) !== null).length;
+  const unassignedStudentsCount = totalStudents - assignedStudentsCount;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans">
       
-      {/* Banner Principal em Azul Escuro SESI */}
-      <div className="bg-[#002B5C] rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-lg text-white">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#70B32D]/20 blur-[90px] pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 bg-white/10 rounded-lg text-[#70B32D]">
-                <ShieldCheck className="w-5 h-5" />
-              </span>
-              <span className="text-xs uppercase tracking-wider text-blue-200 font-bold">
-                Painel Administrativo Regional
-              </span>
-            </div>
-            
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
-              Gestão de Usuários e Unidades SESI
-            </h1>
-            
-            <p className="text-xs sm:text-sm text-blue-100 max-w-2xl leading-relaxed">
-              Supervisão de líderes de pesquisa, cadastro de alunos pesquisadores e controle de acessos nas unidades escolares SESI RN.
-            </p>
-          </div>
+      {/* Toast Notification */}
+      {transferToast && (
+        <div className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl border shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-3 duration-200 ${
+          transferToast.type === 'success' 
+            ? 'bg-emerald-900 text-white border-emerald-700' 
+            : 'bg-rose-900 text-white border-rose-700'
+        }`}>
+          {transferToast.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-300" /> : <AlertCircle className="w-5 h-5 text-rose-300" />}
+          <span className="text-xs font-bold">{transferToast.message}</span>
+          <button onClick={() => setTransferToast(null)} className="p-1 hover:bg-white/20 rounded-lg">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <button
-              onClick={handleOpenEmailSettings}
-              className="bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs border border-white/20 cursor-pointer"
-              title="Configurar Chave para Disparo Automático na Nuvem"
-            >
-              <Settings className="w-4 h-4 text-blue-200" />
-              <span>Configurar E-mail</span>
-            </button>
-
-            <button
-              onClick={handleOpenCreateModal}
-              className="bg-[#70B32D] hover:bg-[#5da523] active:scale-95 transition-all text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-md uppercase tracking-wide cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Cadastrar Usuário</span>
-            </button>
+      {/* Top Banner Institucional */}
+      <div className="bg-gradient-to-r from-[#002B5C] via-[#003B71] to-[#001D3D] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="space-y-2 z-10">
+          <div className="flex items-center gap-2">
+            <span className="bg-[#70B32D] text-[#002B5C] text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider shadow-xs">
+              Módulo de Governança
+            </span>
+            <span className="text-xs text-blue-200 font-semibold">Coordenação Geral SESI RN</span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            Painel de Gestão & Administração ICP
+          </h1>
+          <p className="text-xs sm:text-sm text-blue-100/90 max-w-2xl leading-relaxed">
+            Controle total de usuários, criação e renomeação de grupos de pesquisa, linhas temáticas e alocação/transferência de alunos entre polos.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 z-10">
+          <button
+            onClick={handleOpenCreateModal}
+            className="bg-[#70B32D] hover:bg-[#5da523] text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Novo Usuário</span>
+          </button>
+
+          <button
+            onClick={handleOpenCreateGroup}
+            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer"
+          >
+            <FolderPlus className="w-4 h-4 text-[#70B32D]" />
+            <span>+ Criar Grupo</span>
+          </button>
+
+          <button
+            onClick={handleOpenEmailSettings}
+            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 p-2.5 rounded-xl shadow-lg transition-all active:scale-95 cursor-pointer"
+            title="Configurações de TI / Email"
+          >
+            <Settings className="w-4 h-4 text-blue-200" />
+          </button>
         </div>
       </div>
 
-      {/* Cartões de Indicadores */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        <div className="bg-white border border-slate-200 hover:border-[#002B5C] p-5 rounded-2xl transition-all relative overflow-hidden shadow-xs hover:shadow-md">
+      {/* Cards de Métricas Globais */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-[#002B5C] font-bold uppercase tracking-wider">Professores Líderes</p>
-              <p className="text-3xl font-black text-[#002B5C] mt-1">{totalTeachers}</p>
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Professores</p>
+              <p className="text-2xl sm:text-3xl font-black text-[#002B5C] mt-1">{totalTeachers}</p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-[#002B5C] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#002B5C] flex items-center justify-center">
               <GraduationCap className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 text-xs text-slate-500 flex items-center gap-1.5 border-t border-slate-100 pt-2.5">
+          <div className="mt-2.5 text-[11px] text-slate-500 flex items-center gap-1.5 border-t border-slate-100 pt-2">
             <span className="w-2 h-2 rounded-full bg-[#70B32D]"></span>
-            <span>Orientadores Ativos</span>
+            <span>Orientadores</span>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 hover:border-[#70B32D] p-5 rounded-2xl transition-all relative overflow-hidden shadow-xs hover:shadow-md">
+        <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-[#002B5C] font-bold uppercase tracking-wider">Alunos Pesquisadores</p>
-              <p className="text-3xl font-black text-[#528521] mt-1">{totalStudents}</p>
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Alunos Totais</p>
+              <p className="text-2xl sm:text-3xl font-black text-[#528521] mt-1">{totalStudents}</p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-[#528521] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#528521] flex items-center justify-center">
               <Users className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 text-xs text-slate-500 flex items-center gap-1.5 border-t border-slate-100 pt-2.5">
-            <span className="w-2 h-2 rounded-full bg-[#70B32D]"></span>
-            <span>Máximo 3 por Linha</span>
+          <div className="mt-2.5 text-[11px] text-slate-500 flex items-center gap-1.5 border-t border-slate-100 pt-2">
+            <span>{assignedStudentsCount} Alocados • {unassignedStudentsCount} Livres</span>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 hover:border-[#002B5C] p-5 rounded-2xl transition-all relative overflow-hidden shadow-xs hover:shadow-md">
+        <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-[#002B5C] font-bold uppercase tracking-wider">Grupos de Pesquisa</p>
-              <p className="text-3xl font-black text-[#002B5C] mt-1">{groups.length}</p>
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Grupos de Pesquisa</p>
+              <p className="text-2xl sm:text-3xl font-black text-[#002B5C] mt-1">{groups.length}</p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-[#002B5C] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#002B5C] flex items-center justify-center">
               <BookOpen className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 text-xs text-slate-500 flex items-center gap-1.5 border-t border-slate-100 pt-2.5">
-            <span>3 Unidades Regionais</span>
+          <div className="mt-2.5 text-[11px] text-slate-500 flex items-center gap-1.5 border-t border-slate-100 pt-2">
+            <span>Ativos nas Unidades</span>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 hover:border-[#70B32D] p-5 rounded-2xl transition-all relative overflow-hidden shadow-xs hover:shadow-md">
+        <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-[#002B5C] font-bold uppercase tracking-wider">Linhas de Pesquisa</p>
-              <p className="text-3xl font-black text-[#528521] mt-1">{lines.length}</p>
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Linhas Temáticas</p>
+              <p className="text-2xl sm:text-3xl font-black text-[#528521] mt-1">{lines.length}</p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-[#528521] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#528521] flex items-center justify-center">
               <Layers className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3 text-xs text-slate-500 flex items-center gap-1.5 border-t border-slate-100 pt-2.5">
-            <span>Até 5 Linhas por Grupo</span>
+          <div className="mt-2.5 text-[11px] text-slate-500 flex items-center gap-1.5 border-t border-slate-100 pt-2">
+            <span>Até 5 por Grupo</span>
           </div>
         </div>
 
+        <div className="bg-white border border-slate-200 p-4 sm:p-5 rounded-2xl shadow-xs col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Polos SESI RN</p>
+              <p className="text-2xl sm:text-3xl font-black text-slate-800 mt-1">3</p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-700 flex items-center justify-center">
+              <Building2 className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-2.5 text-[11px] text-slate-500 flex items-center gap-1.5 border-t border-slate-100 pt-2">
+            <span>SGA • Mossoró • Macau</span>
+          </div>
+        </div>
       </div>
 
-      {/* Barra de Filtros e Busca */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-        
-        {/* Campo de Busca */}
-        <div className="relative w-full md:w-84">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por nome, e-mail ou matrícula..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#002B5C] focus:bg-white"
-          />
-        </div>
+      {/* Navegação de Abas do Administrador */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setActiveAdminTab('users')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            activeAdminTab === 'users'
+              ? 'bg-[#002B5C] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Gestão de Usuários ({allUsers.length})</span>
+        </button>
 
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-          {/* Seletor de Unidade */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs text-slate-700">
-            <Building2 className="w-3.5 h-3.5 text-[#002B5C]" />
-            <select
-              value={selectedUnit}
-              onChange={(e) => setSelectedUnit(e.target.value)}
-              className="bg-transparent focus:outline-none cursor-pointer text-slate-800 font-semibold"
-            >
-              <option value="TODAS">Todas as Unidades SESI</option>
-              {SESI_UNITS.map(unit => (
-                <option key={unit} value={unit}>{unit}</option>
-              ))}
-            </select>
-          </div>
+        <button
+          onClick={() => setActiveAdminTab('groups')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            activeAdminTab === 'groups'
+              ? 'bg-[#002B5C] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <BookOpen className="w-4 h-4 text-[#70B32D]" />
+          <span>Gestão de Grupos & Linhas ({groups.length})</span>
+        </button>
 
-          {/* Filtros de Papel */}
-          <div className="flex items-center bg-slate-50 border border-slate-200 p-1 rounded-xl text-xs">
-            <button
-              onClick={() => setRoleFilter('ALL')}
-              className={`px-3 py-1 rounded-lg transition-all ${roleFilter === 'ALL' ? 'bg-[#002B5C] text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Todos
-            </button>
-            <button
-              onClick={() => setRoleFilter('teacher')}
-              className={`px-3 py-1 rounded-lg transition-all ${roleFilter === 'teacher' ? 'bg-[#002B5C] text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Professores
-            </button>
-            <button
-              onClick={() => setRoleFilter('student')}
-              className={`px-3 py-1 rounded-lg transition-all ${roleFilter === 'student' ? 'bg-[#70B32D] text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Alunos
-            </button>
-          </div>
-        </div>
+        <button
+          onClick={() => setActiveAdminTab('transfers')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            activeAdminTab === 'transfers'
+              ? 'bg-[#002B5C] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <ArrowRightLeft className="w-4 h-4 text-[#70B32D]" />
+          <span>Alocação & Transferência de Alunos</span>
+        </button>
 
+        <button
+          onClick={() => setActiveAdminTab('settings')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            activeAdminTab === 'settings'
+              ? 'bg-[#002B5C] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          <span>Configurações & TI</span>
+        </button>
       </div>
 
-      {/* Tabela de Usuários */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#002B5C]" />
-            <h2 className="text-sm font-bold text-[#002B5C] uppercase tracking-wider">
-              Usuários Cadastrados ({filteredUsers.length})
-            </h2>
-          </div>
-          <span className="text-xs text-slate-500 font-medium">Banco de Dados Ativo</span>
-        </div>
+      {/* ========================================================================= */}
+      {/* ABA 1: GESTÃO DE USUÁRIOS */}
+      {/* ========================================================================= */}
+      {activeAdminTab === 'users' && (
+        <div className="space-y-4">
+          {/* Barra de Filtros e Busca */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            {/* Campo de Busca */}
+            <div className="relative w-full md:w-84">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por nome, e-mail ou matrícula..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+              />
+            </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
-              <tr>
-                <th className="px-5 py-3.5">Nome / Usuário</th>
-                <th className="px-4 py-3.5">Perfil</th>
-                <th className="px-4 py-3.5">Unidade Escolar SESI</th>
-                <th className="px-4 py-3.5">Matrícula</th>
-                <th className="px-4 py-3.5">Área / Série</th>
-                <th className="px-4 py-3.5 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredUsers.map((user) => (
-                <tr key={user.uid} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs text-white ${
-                        user.role === 'admin' ? 'bg-[#002B5C]' : user.role === 'teacher' ? 'bg-[#003B71]' : 'bg-[#70B32D]'
-                      }`}>
-                        {user.name.charAt(0)}
+            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+              {/* Seletor de Unidade */}
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs text-slate-700">
+                <Building2 className="w-3.5 h-3.5 text-[#002B5C]" />
+                <select
+                  value={selectedUnit}
+                  onChange={(e) => setSelectedUnit(e.target.value)}
+                  className="bg-transparent focus:outline-none cursor-pointer text-slate-800 font-semibold"
+                >
+                  <option value="TODAS">Todas as Unidades SESI</option>
+                  {SESI_UNITS.map(unit => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filtros de Papel */}
+              <div className="flex items-center bg-slate-50 border border-slate-200 p-1 rounded-xl text-xs">
+                <button
+                  onClick={() => setRoleFilter('ALL')}
+                  className={`px-3 py-1 rounded-lg transition-all ${roleFilter === 'ALL' ? 'bg-[#002B5C] text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                >
+                  Todos
+                </button>
+                <button
+                  onClick={() => setRoleFilter('teacher')}
+                  className={`px-3 py-1 rounded-lg transition-all ${roleFilter === 'teacher' ? 'bg-[#002B5C] text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                >
+                  Professores
+                </button>
+                <button
+                  onClick={() => setRoleFilter('student')}
+                  className={`px-3 py-1 rounded-lg transition-all ${roleFilter === 'student' ? 'bg-[#70B32D] text-white font-bold' : 'text-slate-600 hover:text-slate-900'}`}
+                >
+                  Alunos
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Tabela de Usuários */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#002B5C]" />
+                <h2 className="text-sm font-bold text-[#002B5C] uppercase tracking-wider">
+                  Usuários Cadastrados ({filteredUsers.length})
+                </h2>
+              </div>
+              <button
+                onClick={handleOpenCreateModal}
+                className="bg-[#70B32D] hover:bg-[#5da523] text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Cadastrar Usuário</span>
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="px-5 py-3.5">Nome / Usuário</th>
+                    <th className="px-4 py-3.5">Perfil</th>
+                    <th className="px-4 py-3.5">Unidade Escolar SESI</th>
+                    <th className="px-4 py-3.5">Matrícula</th>
+                    <th className="px-4 py-3.5">Área / Série</th>
+                    <th className="px-4 py-3.5 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredUsers.map((user) => (
+                    <tr key={user.uid} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs text-white ${
+                            user.role === 'admin' ? 'bg-[#002B5C]' : user.role === 'teacher' ? 'bg-[#003B71]' : 'bg-[#70B32D]'
+                          }`}>
+                            {user.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-[#002B5C]">{user.name}</p>
+                            <p className="text-xs text-slate-500">{user.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {user.role === 'admin' && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#002B5C] text-white">
+                            Administrador
+                          </span>
+                        )}
+                        {user.role === 'teacher' && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#002B5C] border border-blue-200">
+                            Professor Líder
+                          </span>
+                        )}
+                        {user.role === 'student' && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-[#528521] border border-emerald-200">
+                            Aluno
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="text-xs text-slate-700 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg font-medium">
+                          {user.unit.replace('SESI ', '')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-slate-600 font-semibold">
+                        {user.matricula}
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-slate-600 max-w-[180px] truncate">
+                        {user.areaOrGrade || '—'}
+                      </td>
+                      <td className="px-4 py-3.5 text-right space-x-1">
+                        <button
+                          onClick={() => handleOpenEditModal(user)}
+                          className="p-1.5 text-slate-400 hover:text-[#002B5C] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                          title="Editar Usuário"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          title="Excluir Usuário"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ABA 2: GESTÃO DE GRUPOS & LINHAS */}
+      {/* ========================================================================= */}
+      {activeAdminTab === 'groups' && (
+        <div className="space-y-6">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#002B5C] uppercase tracking-wider flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-[#70B32D]" />
+                Grupos de Pesquisa & Linhas Temáticas
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Criação, renomeação, alteração de orientador e gestão completa das linhas
+              </p>
+            </div>
+
+            <button
+              onClick={handleOpenCreateGroup}
+              className="bg-[#002B5C] hover:bg-[#003B71] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-[#70B32D]" />
+              <span>+ Criar Novo Grupo de Pesquisa</span>
+            </button>
+          </div>
+
+          {filteredGroups.length === 0 ? (
+            <div className="text-center py-12 px-4 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
+              <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="text-sm font-bold text-[#002B5C]">Nenhum Grupo de Pesquisa Encontrado</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Crie o primeiro grupo de pesquisa para vincular aos professores orientadores e alunos.
+              </p>
+              <button
+                onClick={handleOpenCreateGroup}
+                className="bg-[#70B32D] hover:bg-[#5da523] text-white px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2 cursor-pointer shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Criar Grupo Agora</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {filteredGroups.map((group) => {
+                const groupLines = lines.filter(l => l.groupId === group.id);
+                const totalStudentsInGroup = groupLines.reduce((acc, curr) => acc + curr.studentIds.length, 0);
+
+                return (
+                  <div key={group.id} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all">
+                    
+                    {/* Cabeçalho do Grupo */}
+                    <div className="p-5 sm:p-6 bg-slate-50/80 border-b border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="bg-blue-100 text-[#002B5C] font-bold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wide">
+                            {group.unit}
+                          </span>
+                          <span className="bg-emerald-100 text-[#528521] font-bold px-2.5 py-0.5 rounded-md text-[10px]">
+                            {groupLines.length}/5 Linhas
+                          </span>
+                          <span className="bg-slate-200 text-slate-700 font-bold px-2.5 py-0.5 rounded-md text-[10px]">
+                            {totalStudentsInGroup} Alunos Vinculados
+                          </span>
+                        </div>
+                        <h3 className="text-base sm:text-lg font-bold text-[#002B5C]">
+                          {group.title}
+                        </h3>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          {group.description || 'Sem descrição cadastrada.'}
+                        </p>
+                        <p className="text-xs text-slate-500 font-medium pt-1">
+                          Orientador Líder: <strong className="text-[#002B5C]">{group.leaderTeacherName}</strong>
+                        </p>
                       </div>
-                      <div>
-                        <p className="font-bold text-[#002B5C]">{user.name}</p>
-                        <p className="text-xs text-slate-500">{user.email}</p>
+
+                      {/* Botões de Ação do Grupo */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleOpenCreateLine(group)}
+                          disabled={groupLines.length >= 5}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-[#528521] border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Adicionar Linha</span>
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditGroup(group)}
+                          className="bg-blue-50 hover:bg-blue-100 text-[#002B5C] border border-blue-200 p-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                          title="Renomear / Editar Grupo"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteGroup(group)}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 p-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                          title="Excluir Grupo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    {user.role === 'admin' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#002B5C] text-white">
-                        Administrador
-                      </span>
-                    )}
-                    {user.role === 'teacher' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#002B5C] border border-blue-200">
-                        Professor Líder
-                      </span>
-                    )}
-                    {user.role === 'student' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-[#528521] border border-emerald-200">
-                        Aluno
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="text-xs text-slate-700 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg font-medium">
-                      {user.unit.replace('SESI ', '')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-xs text-slate-600 font-semibold">
-                    {user.matricula}
-                  </td>
-                  <td className="px-4 py-3.5 text-xs text-slate-600 max-w-[180px] truncate">
-                    {user.areaOrGrade || '—'}
-                  </td>
-                  <td className="px-4 py-3.5 text-right space-x-1">
-                    <button
-                      onClick={() => handleOpenEditModal(user)}
-                      className="p-1.5 text-slate-400 hover:text-[#002B5C] hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Editar Usuário"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(user)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Excluir Usuário"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      {/* Visão Geral dos Grupos de Pesquisa */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 space-y-4 shadow-xs">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
-            <h2 className="text-sm font-bold text-[#002B5C] uppercase tracking-wider flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-[#70B32D]" />
-              Grupos de Pesquisa Ativos nas Unidades SESI
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Supervisão de professores orientadores e capacidade de linhas cadastradas
-            </p>
-          </div>
-        </div>
+                    {/* Lista de Linhas de Pesquisa do Grupo */}
+                    <div className="p-5 sm:p-6 space-y-3">
+                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-[#002B5C]" />
+                        Linhas de Pesquisa deste Grupo ({groupLines.length})
+                      </h4>
 
-        {groups.length === 0 ? (
-          <div className="text-center py-10 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 space-y-2">
-            <BookOpen className="w-8 h-8 text-slate-400 mx-auto" />
-            <h3 className="text-xs font-bold text-[#002B5C] uppercase tracking-wider">
-              Nenhum Grupo de Pesquisa Registrado
-            </h3>
-            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-              Os professores líderes darão abertura oficial e atribuirão os nomes aos seus grupos de pesquisa ao acessarem a plataforma.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {groups.map((group) => {
-              const groupLines = lines.filter(l => l.groupId === group.id);
-              const totalStudentsInGroup = groupLines.reduce((acc, curr) => acc + curr.studentIds.length, 0);
+                      {groupLines.length === 0 ? (
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center text-xs text-slate-500">
+                          Nenhuma linha de pesquisa criada neste grupo ainda.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {groupLines.map((line) => (
+                            <div key={line.id} className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-[#002B5C] transition-all flex flex-col justify-between space-y-3 shadow-2xs">
+                              <div>
+                                <div className="flex items-center justify-between gap-1 mb-1">
+                                  <span className="bg-[#002B5C] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                                    Linha 0{line.lineNumber}
+                                  </span>
+                                  <span className="text-[10px] font-semibold text-[#528521] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                                    {line.studentIds.length}/3 Alunos
+                                  </span>
+                                </div>
+                                <h5 className="text-xs font-bold text-[#002B5C] leading-snug">
+                                  {line.title}
+                                </h5>
+                                <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                                  Área: {line.area}
+                                </p>
+                              </div>
 
-              return (
-                <div key={group.id} className="border border-slate-200 hover:border-[#002B5C] rounded-xl p-4 bg-slate-50/50 hover:bg-white transition-all flex flex-col justify-between space-y-3 shadow-xs hover:shadow-md">
-                  <div>
-                    <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="bg-blue-50 text-[#002B5C] border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold">
-                        {group.unit.replace('SESI ', '')}
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-semibold">{groupLines.length}/5 Linhas</span>
+                              {/* Alunos na Linha */}
+                              <div className="space-y-1 text-[11px] bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                <p className="font-bold text-slate-600 text-[10px] uppercase">Alunos Vinculados:</p>
+                                {line.studentNames.length === 0 ? (
+                                  <p className="text-slate-400 italic text-[10px]">Nenhum aluno matriculado</p>
+                                ) : (
+                                  line.studentNames.map((name, idx) => (
+                                    <p key={idx} className="text-slate-700 font-medium truncate flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#70B32D]"></span>
+                                      {name}
+                                    </p>
+                                  ))
+                                )}
+                              </div>
+
+                              {/* Ações da Linha */}
+                              <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1">
+                                <button
+                                  onClick={() => handleOpenEditLine(group, line)}
+                                  className="p-1.5 text-slate-500 hover:text-[#002B5C] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                  title="Renomear Linha / Alterar Metodologia"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteLine(line)}
+                                  className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Excluir Linha"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <h3 className="text-sm font-bold text-[#002B5C] leading-snug">
-                      {group.title}
-                    </h3>
-                    <p className="text-xs text-slate-600 mt-1.5 line-clamp-2 leading-relaxed">
-                      {group.description}
-                    </p>
-                  </div>
 
-                  <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-xs">
-                    <span className="text-slate-600">
-                      Líder: <strong className="text-[#002B5C]">{group.leaderTeacherName.split(' ')[0]} {group.leaderTeacherName.split(' ').slice(-1)[0]}</strong>
-                    </span>
-                    <span className="bg-emerald-50 text-[#528521] border border-emerald-200 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                      {totalStudentsInGroup} alunos
-                    </span>
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ABA 3: ALOCAÇÃO & TRANSFERÊNCIA DE ALUNOS */}
+      {/* ========================================================================= */}
+      {activeAdminTab === 'transfers' && (
+        <div className="space-y-6">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#002B5C] uppercase tracking-wider flex items-center gap-2">
+                <ArrowRightLeft className="w-4 h-4 text-[#70B32D]" />
+                Alocação & Transferência de Alunos entre Linhas e Grupos
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Mude qualquer aluno de orientador/linha ou deixe-o livre com 1 clique.
+              </p>
+            </div>
+
+            {/* Campo de Busca */}
+            <div className="relative w-full md:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar aluno por nome ou matrícula..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Tabela de Alunos e Transferência */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="px-5 py-3.5">Aluno Pesquisador</th>
+                    <th className="px-4 py-3.5">Unidade Escolar</th>
+                    <th className="px-4 py-3.5">Alocação Atual</th>
+                    <th className="px-4 py-3.5">Orientador Responsável</th>
+                    <th className="px-4 py-3.5 text-right">Ação de Governança</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredStudents.map((student) => {
+                    const alloc = getStudentCurrentAllocation(student.uid);
+
+                    return (
+                      <tr key={student.uid} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-5 py-3.5">
+                          <div>
+                            <p className="font-bold text-[#002B5C]">{student.name}</p>
+                            <p className="text-[11px] text-slate-500">{student.email} • Matrícula: {student.matricula || '—'}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="text-xs text-slate-700 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded font-medium">
+                            {student.unit.replace('SESI ', '')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          {alloc ? (
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-[#528521] border border-emerald-200 flex items-center gap-1.5 w-fit">
+                              <Layers className="w-3.5 h-3.5" />
+                              Linha 0{alloc.line.lineNumber}: {alloc.line.title}
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5 w-fit">
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              Livre (Sem Linha de Pesquisa)
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-700 font-medium">
+                          {alloc ? alloc.group?.leaderTeacherName : '—'}
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <button
+                            onClick={() => handleOpenTransferModal(student)}
+                            className="bg-blue-50 hover:bg-[#002B5C] text-[#002B5C] hover:text-white border border-blue-200 hover:border-[#002B5C] px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                          >
+                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                            <span>Transferir / Alocar</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ABA 4: CONFIGURAÇÕES & TI */}
+      {/* ========================================================================= */}
+      {activeAdminTab === 'settings' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#002B5C] flex items-center justify-center">
+                <Settings className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#002B5C] uppercase tracking-wider">
+                  Configurações do Sistema & Integração de E-mail
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Gerencie as chaves do EmailJS e serviços de comunicação em lote
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
+                <h4 className="text-xs font-bold text-[#002B5C] flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-[#70B32D]" />
+                  Disparo Automático de Credenciais (EmailJS)
+                </h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Permite configurar o Service ID, Template ID e Public Key para envio de senhas institucionais.
+                </p>
+                <button
+                  onClick={handleOpenEmailSettings}
+                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 mt-2 cursor-pointer shadow-xs"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Configurar Credenciais do EmailJS</span>
+                </button>
+              </div>
+
+              <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
+                <h4 className="text-xs font-bold text-[#002B5C] flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#70B32D]" />
+                  Banco de Dados & Autenticação
+                </h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Conectado à nuvem Google Firebase (Firestore + Firebase Auth) com proteção isolada por perfil.
+                </p>
+                <div className="flex items-center gap-2 pt-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-xs font-bold text-emerald-800">Serviços Online e Operacionais</span>
                 </div>
-              );
-            })}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Modal de Cadastro / Edição */}
+      {/* ========================================================================= */}
+      {/* MODAL: CRIAR / EDITAR GRUPO DE PESQUISA */}
+      {/* ========================================================================= */}
+      {isGroupModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-[#002B5C] p-5 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2.5">
+                <BookOpen className="w-5 h-5 text-[#70B32D]" />
+                <div>
+                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">
+                    {editingGroup ? 'Editar Grupo de Pesquisa' : 'Criar Novo Grupo de Pesquisa'}
+                  </h3>
+                  <p className="text-xs text-blue-200">Administração Geral SESI ICP</p>
+                </div>
+              </div>
+              <button onClick={() => setIsGroupModalOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveGroup} className="p-6 space-y-4">
+              {groupModalError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{groupModalError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Título do Grupo de Pesquisa *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={groupFormData.title}
+                  onChange={(e) => setGroupFormData({ ...groupFormData, title: e.target.value })}
+                  placeholder="Ex: Matemática, Cultura Digital e Pensamento Computacional"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Unidade Escolar SESI *
+                </label>
+                <select
+                  value={groupFormData.unit}
+                  onChange={(e) => setGroupFormData({ ...groupFormData, unit: e.target.value as SesiUnit })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white cursor-pointer font-medium"
+                >
+                  {SESI_UNITS.map(unit => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Professor Orientador / Líder *
+                </label>
+                <select
+                  required
+                  value={groupFormData.leaderTeacherId}
+                  onChange={(e) => setGroupFormData({ ...groupFormData, leaderTeacherId: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white cursor-pointer font-medium"
+                >
+                  <option value="">Selecione o Professor Líder...</option>
+                  {teachersList.map(teacher => (
+                    <option key={teacher.uid} value={teacher.uid}>
+                      {teacher.name} ({teacher.unit.replace('SESI ', '')}) — {teacher.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Descrição & Metodologia Geral
+                </label>
+                <textarea
+                  rows={3}
+                  value={groupFormData.description}
+                  onChange={(e) => setGroupFormData({ ...groupFormData, description: e.target.value })}
+                  placeholder="Descreva a fundamentação, escopo e metas gerais das pesquisas desenvolvidas pelo grupo..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsGroupModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingGroup}
+                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingGroup ? 'Salvando...' : editingGroup ? 'Salvar Alterações' : 'Criar Grupo'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: CRIAR / EDITAR LINHA DE PESQUISA */}
+      {/* ========================================================================= */}
+      {isLineModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-[#002B5C] p-5 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2.5">
+                <Layers className="w-5 h-5 text-[#70B32D]" />
+                <div>
+                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">
+                    {editingLine ? 'Editar Linha de Pesquisa' : 'Nova Linha de Pesquisa'}
+                  </h3>
+                  <p className="text-xs text-blue-200">
+                    Grupo: {targetGroupForLine?.title}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsLineModalOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLine} className="p-6 space-y-4">
+              {lineModalError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{lineModalError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Título da Linha de Pesquisa *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={lineFormData.title}
+                  onChange={(e) => setLineFormData({ ...lineFormData, title: e.target.value })}
+                  placeholder="Ex: G1 - Metodologias ativas para o ensino de Criptografia"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Área Temática / Subárea *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={lineFormData.area}
+                  onChange={(e) => setLineFormData({ ...lineFormData, area: e.target.value })}
+                  placeholder="Ex: Teoria dos números / Inteligência Artificial / Robótica"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Objetivos e Metodologia da Linha
+                </label>
+                <textarea
+                  rows={3}
+                  value={lineFormData.description}
+                  onChange={(e) => setLineFormData({ ...lineFormData, description: e.target.value })}
+                  placeholder="Descreva a fundamentação, metodologia e metas da linha temática..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLineModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingLine}
+                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingLine ? 'Salvando...' : editingLine ? 'Salvar Alterações' : 'Criar Linha'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: TRANSFERIR / ALOCAR ALUNO */}
+      {/* ========================================================================= */}
+      {transferringStudent && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-[#002B5C] p-5 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2.5">
+                <ArrowRightLeft className="w-5 h-5 text-[#70B32D]" />
+                <div>
+                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">
+                    Alocar / Transferir Aluno
+                  </h3>
+                  <p className="text-xs text-blue-200">{transferringStudent.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setTransferringStudent(null)} className="text-white/70 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1">
+                <p><strong className="text-[#002B5C]">E-mail:</strong> {transferringStudent.email}</p>
+                <p><strong className="text-[#002B5C]">Unidade Atual:</strong> {transferringStudent.unit}</p>
+                <p><strong className="text-[#002B5C]">Matrícula:</strong> {transferringStudent.matricula || '—'}</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1.5">
+                  Selecione o Grupo e Linha de Pesquisa de Destino:
+                </label>
+                <select
+                  value={selectedTargetLineId}
+                  onChange={(e) => setSelectedTargetLineId(e.target.value)}
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white font-medium"
+                >
+                  <option value="UNASSIGN">❌ Deixar Sem Linha (Aluno Livre / Desvinculado)</option>
+                  {groups.map(group => {
+                    const groupLines = lines.filter(l => l.groupId === group.id);
+                    return (
+                      <optgroup key={group.id} label={`🏛️ [${group.unit.replace('SESI ', '')}] ${group.title} (Prof. ${group.leaderTeacherName})`}>
+                        {groupLines.map(line => {
+                          const isFull = line.studentIds.length >= 3 && !line.studentIds.includes(transferringStudent.uid);
+                          return (
+                            <option key={line.id} value={line.id} disabled={isFull}>
+                              Linha 0{line.lineNumber}: {line.title} — ({line.studentIds.length}/3 alunos) {isFull ? '(LOTADA)' : ''}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTransferringStudent(null)}
+                  className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isTransferring}
+                  onClick={handleExecuteTransfer}
+                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-[#70B32D]" />
+                  <span>{isTransferring ? 'Transferindo...' : 'Confirmar Transferência'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: CRIAR / EDITAR USUÁRIO */}
+      {/* ========================================================================= */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             
             {/* Cabeçalho do Modal */}
             <div className="bg-[#002B5C] p-4 sm:p-5 flex items-center justify-between text-white">
@@ -675,9 +1550,7 @@ export const AdminDashboard: React.FC = () => {
                   <h3 className="font-bold text-sm text-white uppercase tracking-wider">
                     {editingUser ? 'Editar Usuário' : 'Novo Cadastro Institucional'}
                   </h3>
-                  <p className="text-xs text-blue-200">
-                    Credencial oficial do SESI ICP
-                  </p>
+                  <p className="text-xs text-blue-200">Credencial oficial do SESI ICP</p>
                 </div>
               </div>
               <button
@@ -739,103 +1612,31 @@ export const AdminDashboard: React.FC = () => {
                     <span className="text-slate-500 font-semibold">Polo SESI</span>
                     <span className="font-semibold text-slate-700">{createdCredentials.unit}</span>
                   </div>
-                  {createdCredentials.matricula && (
-                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                      <span className="text-slate-500 font-semibold">Matrícula</span>
-                      <span className="font-semibold text-slate-800 font-mono">{createdCredentials.matricula}</span>
-                    </div>
-                  )}
-                  {createdCredentials.areaOrGrade && (
-                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                      <span className="text-slate-500 font-semibold">
-                        {createdCredentials.role === 'student' ? 'Série / Turma' : 'Área de Atuação'}
-                      </span>
-                      <span className="font-semibold text-slate-800">{createdCredentials.areaOrGrade}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between pt-0.5">
-                    <span className="text-slate-500 font-semibold flex items-center gap-1">
-                      <Globe className="w-3.5 h-3.5 text-[#002B5C]" />
-                      Link do Portal
-                    </span>
-                    <a
-                      href="https://gestao-icp.vercel.app"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-bold text-[#002B5C] hover:underline flex items-center gap-1 font-mono text-[11px]"
-                    >
-                      gestao-icp.vercel.app
-                      <ExternalLink className="w-3 h-3 text-[#70B32D]" />
-                    </a>
-                  </div>
                 </div>
 
-                <div className="pt-2 space-y-2">
+                <div className="pt-2 flex items-center justify-end gap-2">
                   <button
-                    type="button"
-                    onClick={handleSendEmailViaClient}
-                    className="w-full bg-[#002B5C] hover:bg-[#003B71] text-white py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
-                  >
-                    <Mail className="w-4 h-4 text-[#70B32D]" />
-                    <span>
-                      Disparar E-mail Institucional para {createdCredentials.role === 'student' ? 'o Aluno' : 'o Professor'}
-                    </span>
-                  </button>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={handleCopyAccessMessage}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-slate-200"
-                    >
-                      {copiedMessage ? (
-                        <>
-                          <Check className="w-4 h-4 text-emerald-600" />
-                          <span>Mensagem Copiada!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4 text-slate-600" />
-                          <span>Copiar Mensagem</span>
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleShareWhatsApp}
-                      className="bg-emerald-50 hover:bg-emerald-100 text-[#528521] border border-emerald-200 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Enviar via WhatsApp</span>
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
                     onClick={() => {
-                      setCreatedCredentials(null);
                       setIsModalOpen(false);
+                      setCreatedCredentials(null);
                     }}
-                    className="w-full bg-slate-50 hover:bg-slate-100 text-slate-500 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer mt-1"
+                    className="w-full bg-[#002B5C] hover:bg-[#003B71] text-white py-2.5 rounded-xl font-bold text-xs shadow-md cursor-pointer"
                   >
-                    Concluir e Fechar
+                    Concluir
                   </button>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSaveUser} className="p-5 space-y-4">
-                
+              <form onSubmit={handleSaveUser} className="p-6 space-y-4 text-left">
                 {modalError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{modalError}</span>
                   </div>
                 )}
-
                 {modalSuccess && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
                     <span>{modalSuccess}</span>
                   </div>
                 )}
@@ -849,83 +1650,41 @@ export const AdminDashboard: React.FC = () => {
                     required
                     value={modalFormData.name}
                     onChange={(e) => setModalFormData({ ...modalFormData, name: e.target.value })}
-                    placeholder="Ex: Prof. Dr. Rodrigo Souza ou Aluno Vinicius"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                    placeholder="Ex: João da Silva"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                      E-mail Institucional *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={modalFormData.email}
-                      onChange={(e) => setModalFormData({ ...modalFormData, email: e.target.value })}
-                      placeholder="usuario@sesi.org.br"
-                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                    E-mail Institucional *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={modalFormData.email}
+                    onChange={(e) => setModalFormData({ ...modalFormData, email: e.target.value })}
+                    placeholder="usuario@sesi.org.br"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                  />
+                </div>
 
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                      Papel / Função *
+                      Papel / Perfil *
                     </label>
                     <select
                       value={modalFormData.role}
-                      onChange={(e) => {
-                        const newRole = e.target.value as UserRole;
-                        const defaultPwd = newRole === 'teacher' ? 'sesi@prof2026' : newRole === 'student' ? 'sesi@aluno2026' : 'sesi@admin2026';
-                        setModalFormData({ 
-                          ...modalFormData, 
-                          role: newRole,
-                          password: modalFormData.password.startsWith('sesi@') ? defaultPwd : modalFormData.password
-                        });
-                      }}
-                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] font-medium"
+                      onChange={(e) => setModalFormData({ ...modalFormData, role: e.target.value as UserRole })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white font-medium cursor-pointer"
                     >
-                      <option value="teacher">Professor Pesquisador Líder</option>
+                      <option value="teacher">Professor Líder</option>
                       <option value="student">Aluno Pesquisador</option>
                       <option value="admin">Administrador</option>
                     </select>
                   </div>
-                </div>
 
-                {!editingUser && (
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide">
-                        Senha de Acesso Inicial *
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setModalFormData({ ...modalFormData, password: generateRandomPassword() })}
-                        className="text-[11px] font-bold text-[#528521] hover:text-[#70B32D] flex items-center gap-1 cursor-pointer"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        Gerar Senha Aleatória
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <Key className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                      <input
-                        type="text"
-                        required
-                        value={modalFormData.password}
-                        onChange={(e) => setModalFormData({ ...modalFormData, password: e.target.value })}
-                        placeholder="Defina a senha inicial..."
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-mono focus:outline-none focus:border-[#002B5C] focus:bg-white"
-                      />
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Ao concluir, você poderá copiar os dados prontos para enviar ao professor.
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
                       Unidade Escolar SESI *
@@ -933,58 +1692,71 @@ export const AdminDashboard: React.FC = () => {
                     <select
                       value={modalFormData.unit}
                       onChange={(e) => setModalFormData({ ...modalFormData, unit: e.target.value as SesiUnit })}
-                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] font-medium"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white font-medium cursor-pointer"
                     >
                       {SESI_UNITS.map(unit => (
                         <option key={unit} value={unit}>{unit}</option>
                       ))}
                     </select>
                   </div>
+                </div>
 
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                      Matrícula SESI
+                      Matrícula
                     </label>
                     <input
                       type="text"
                       value={modalFormData.matricula}
                       onChange={(e) => setModalFormData({ ...modalFormData, matricula: e.target.value })}
-                      placeholder="SESI-2026-99"
-                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                      placeholder="Ex: SESI-1234"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                      {modalFormData.role === 'student' ? 'Série / Turma' : 'Área de Atuação'}
+                    </label>
+                    <input
+                      type="text"
+                      value={modalFormData.areaOrGrade}
+                      onChange={(e) => setModalFormData({ ...modalFormData, areaOrGrade: e.target.value })}
+                      placeholder={modalFormData.role === 'student' ? 'Ex: 2º Ano Ensino Médio' : 'Ex: Robótica / Matemática'}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
-                    {modalFormData.role === 'teacher' ? 'Área de Atuação / Formação' : 'Série / Turma / Curso Técnico'}
+                    Senha de Acesso {editingUser && '(Deixe em branco para manter a atual)'}
                   </label>
                   <input
-                    type="text"
-                    value={modalFormData.areaOrGrade}
-                    onChange={(e) => setModalFormData({ ...modalFormData, areaOrGrade: e.target.value })}
-                    placeholder={modalFormData.role === 'teacher' ? 'Ex: Engenharia Elétrica & Robótica' : 'Ex: 3ª Série Ensino Médio - Turma A'}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
+                    type="password"
+                    value={modalFormData.password}
+                    onChange={(e) => setModalFormData({ ...modalFormData, password: e.target.value })}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
                   />
                 </div>
 
-                {/* Botões de Ação */}
-                <div className="border-t border-slate-100 pt-4 flex items-center justify-end gap-2.5">
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 font-semibold cursor-pointer"
+                    className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md transition-all uppercase tracking-wide cursor-pointer"
+                    className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer"
                   >
-                    {editingUser ? 'Salvar Alterações' : 'Confirmar Cadastro'}
+                    {editingUser ? 'Salvar Alterações' : 'Cadastrar Usuário'}
                   </button>
                 </div>
-
               </form>
             )}
 
@@ -992,85 +1764,69 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Confirmação de Senha Mestra */}
+      {/* ========================================================================= */}
+      {/* MODAL: SENHA MESTRA PARA CONFIGURAÇÕES */}
+      {/* ========================================================================= */}
       {isPasswordModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-[#002B5C] p-4 sm:p-5 flex items-center justify-between text-white">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-[#002B5C] p-5 flex items-center justify-between text-white">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-400/20 text-amber-300 flex items-center justify-center">
-                  <Lock className="w-4 h-4" />
-                </div>
+                <ShieldAlert className="w-5 h-5 text-[#70B32D]" />
                 <div>
-                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">
-                    Área Restrita / TI
-                  </h3>
-                  <p className="text-[11px] text-blue-200">
-                    Acesso Protegido por Senha
-                  </p>
+                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">Acesso de Desenvolvedor / TI</h3>
+                  <p className="text-xs text-blue-200">Autenticação Mestra</p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsPasswordModalOpen(false)}
-                className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 cursor-pointer"
-              >
+              <button onClick={() => setIsPasswordModalOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleVerifyPassword} className="p-5 space-y-4 text-xs">
-              <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 p-3 rounded-xl text-amber-900">
-                <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
-                <p className="text-[11px] leading-relaxed">
-                  As configurações de envio e API são restritas para evitar alterações indevidas. Digite a senha mestra para continuar.
-                </p>
-              </div>
+            <form onSubmit={handleVerifyPassword} className="p-6 space-y-4">
+              {passwordError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{passwordError}</span>
+                </div>
+              )}
 
               <div>
-                <label className="block font-bold text-[#002B5C] uppercase tracking-wide mb-1 text-[11px]">
-                  Senha Mestra de Acesso
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Senha Mestra de Segurança
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    autoFocus
                     value={enteredPassword}
                     onChange={(e) => setEnteredPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white text-xs font-mono"
+                    placeholder="••••••••"
+                    className="w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-              {passwordError && (
-                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-[11px] font-semibold flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{passwordError}</span>
-                </div>
-              )}
-
-              <div className="border-t border-slate-100 pt-3 flex items-center justify-end gap-2">
+              <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="px-4 py-2 text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl font-bold shadow-md uppercase tracking-wide cursor-pointer flex items-center gap-1.5"
+                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer"
                 >
-                  <Lock className="w-3.5 h-3.5 text-[#70B32D]" />
-                  <span>Desbloquear</span>
+                  Acessar
                 </button>
               </div>
             </form>
@@ -1078,118 +1834,100 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Configuração de E-mail Automático (EmailJS) */}
+      {/* ========================================================================= */}
+      {/* MODAL: CONFIGURAÇÃO DO EMAILJS */}
+      {/* ========================================================================= */}
       {isEmailSettingsOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-[#002B5C] p-4 sm:p-5 flex items-center justify-between text-white">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-[#002B5C] p-5 flex items-center justify-between text-white">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-[#70B32D]">
-                  <Mail className="w-4 h-4" />
-                </div>
+                <Mail className="w-5 h-5 text-[#70B32D]" />
                 <div>
-                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">
-                    Disparo Automático de E-mails
-                  </h3>
-                  <p className="text-xs text-blue-200">
-                    Integração com seu Gmail/Outlook via EmailJS (Sem precisar de domínio)
-                  </p>
+                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">Configuração do EmailJS</h3>
+                  <p className="text-xs text-blue-200">Disparo Automático de Credenciais</p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsEmailSettingsOpen(false)}
-                className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10"
-              >
+              <button onClick={() => setIsEmailSettingsOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEmailConfig} className="p-5 space-y-4 text-xs">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 space-y-2 text-[#002B5C]">
-                <p className="font-bold text-[11px] uppercase tracking-wider">Como obter suas credenciais gratuitas (2 minutos):</p>
-                <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed text-slate-700">
-                  <li>Crie uma conta gratuita em <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" className="text-[#002B5C] font-bold underline">emailjs.com</a> (200 envios/mês grátis).</li>
-                  <li>Em <strong>Email Services</strong>, conecte seu Gmail ou Outlook e copie o <strong>Service ID</strong>.</li>
-                  <li>Em <strong>Email Templates</strong>, crie um template e copie o <strong>Template ID</strong>.</li>
-                  <li>Em <strong>Account</strong>, copie sua <strong>Public Key</strong>.</li>
-                </ol>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block font-bold text-[#002B5C] uppercase tracking-wide mb-1 text-[11px]">
-                    Service ID (Ex: service_xxxxxx)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={emailjsForm.serviceId}
-                    onChange={(e) => setEmailjsForm({ ...emailjsForm, serviceId: e.target.value })}
-                    placeholder="service_gmail"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#002B5C] focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-[#002B5C] uppercase tracking-wide mb-1 text-[11px]">
-                    Template ID (Ex: template_xxxxxx)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={emailjsForm.templateId}
-                    onChange={(e) => setEmailjsForm({ ...emailjsForm, templateId: e.target.value })}
-                    placeholder="template_welcome_sesi"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#002B5C] focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-[#002B5C] uppercase tracking-wide mb-1 text-[11px]">
-                    Public Key / User ID (Ex: user_xxxxxx ou abc123xyz...)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={emailjsForm.publicKey}
-                    onChange={(e) => setEmailjsForm({ ...emailjsForm, publicKey: e.target.value })}
-                    placeholder="AbCdEfGhIjKlMnOpQ"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono focus:outline-none focus:border-[#002B5C] focus:bg-white"
-                  />
-                </div>
-              </div>
-
+            <form onSubmit={handleSaveEmailConfig} className="p-6 space-y-4">
               {emailConfigStatus && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium">
-                  {emailConfigStatus}
+                <div className="p-3 bg-blue-50 border border-blue-200 text-[#002B5C] text-xs rounded-xl flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-[#70B32D]" />
+                  <span>{emailConfigStatus}</span>
                 </div>
               )}
 
-              <div className="border-t border-slate-100 pt-3 flex items-center justify-between gap-2">
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Service ID *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={emailjsForm.serviceId}
+                  onChange={(e) => setEmailjsForm({ ...emailjsForm, serviceId: e.target.value })}
+                  placeholder="Ex: service_sesi_icp"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Template ID *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={emailjsForm.templateId}
+                  onChange={(e) => setEmailjsForm({ ...emailjsForm, templateId: e.target.value })}
+                  placeholder="Ex: template_icp_welcome"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1">
+                  Public Key (User ID) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={emailjsForm.publicKey}
+                  onChange={(e) => setEmailjsForm({ ...emailjsForm, publicKey: e.target.value })}
+                  placeholder="Ex: user_xyz123456789"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white font-mono"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={handleTestEmailjs}
                   disabled={isTestingEmail}
-                  className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  onClick={handleTestEmailjs}
+                  className="bg-emerald-50 hover:bg-emerald-100 text-[#528521] border border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <Send className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{isTestingEmail ? 'Enviando...' : 'Testar Conexão'}</span>
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isTestingEmail ? 'Testando...' : 'Enviar E-mail de Teste'}</span>
                 </button>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setIsEmailSettingsOpen(false)}
-                    className="px-4 py-2 text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                    className="px-3 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
                   >
-                    Cancelar
+                    Fechar
                   </button>
                   <button
                     type="submit"
                     disabled={isSavingConfig}
-                    className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl font-bold shadow-md uppercase tracking-wide disabled:opacity-50 cursor-pointer"
+                    className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md cursor-pointer"
                   >
-                    {isSavingConfig ? 'Salvando...' : 'Salvar Configuração'}
+                    {isSavingConfig ? 'Salvando...' : 'Salvar Configurações'}
                   </button>
                 </div>
               </div>

@@ -67,12 +67,24 @@ export const groupService = {
     return toGroup(snap.data()!, ref.id);
   },
 
+  createGroup: async (data: Partial<ResearchGroup>): Promise<ResearchGroup> => {
+    return groupService.saveGroup(data);
+  },
+
   updateGroup: async (id: string, data: Partial<ResearchGroup>): Promise<void> => {
     await updateDoc(doc(db, 'groups', id), { ...data, updatedAt: serverTimestamp() });
   },
 
   deleteGroup: async (id: string): Promise<void> => {
     await deleteDoc(doc(db, 'groups', id));
+  },
+
+  deleteGroupWithLines: async (groupId: string): Promise<void> => {
+    const linesSnap = await getDocs(query(collection(db, 'lines'), where('groupId', '==', groupId)));
+    for (const lDoc of linesSnap.docs) {
+      await deleteDoc(doc(db, 'lines', lDoc.id));
+    }
+    await deleteDoc(doc(db, 'groups', groupId));
   },
 
   getLinesByGroup: async (groupId: string): Promise<ResearchLine[]> => {
@@ -101,6 +113,43 @@ export const groupService = {
 
   deleteLine: async (id: string): Promise<void> => {
     await deleteDoc(doc(db, 'lines', id));
+  },
+
+  transferStudent: async (studentId: string, studentName: string, targetLineId: string | null): Promise<void> => {
+    // 1. Remove o aluno de qualquer linha atual onde esteja matriculado
+    const allLinesSnap = await getDocs(collection(db, 'lines'));
+    for (const lDoc of allLinesSnap.docs) {
+      const data = lDoc.data();
+      const sIds = (data.studentIds || []) as string[];
+      if (sIds.includes(studentId)) {
+        const newIds = sIds.filter(id => id !== studentId);
+        const sNames = (data.studentNames || []) as string[];
+        const newNames = sNames.filter(name => name !== studentName);
+        await updateDoc(doc(db, 'lines', lDoc.id), {
+          studentIds: newIds,
+          studentNames: newNames,
+        });
+      }
+    }
+
+    // 2. Se targetLineId for informado, adiciona na linha de destino
+    if (targetLineId) {
+      const targetDoc = await getDoc(doc(db, 'lines', targetLineId));
+      if (targetDoc.exists()) {
+        const data = targetDoc.data();
+        const currentIds = (data.studentIds || []) as string[];
+        const currentNames = (data.studentNames || []) as string[];
+        if (!currentIds.includes(studentId)) {
+          if (currentIds.length >= 3) {
+            throw new Error('A linha de pesquisa de destino já atingiu a capacidade máxima de 3 alunos.');
+          }
+          await updateDoc(doc(db, 'lines', targetLineId), {
+            studentIds: [...currentIds, studentId],
+            studentNames: [...currentNames, studentName],
+          });
+        }
+      }
+    }
   },
 
   getStudentGroupAndLine: async (studentId: string): Promise<{ group: ResearchGroup | null; line: ResearchLine | null }> => {
