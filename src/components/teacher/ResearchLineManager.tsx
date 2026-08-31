@@ -45,11 +45,28 @@ export const ResearchLineManager: React.FC<Props> = ({
   const [groupTitle, setGroupTitle] = useState(group.title);
   const [groupDesc, setGroupDesc] = useState(group.description);
 
+  const [allSystemLines, setAllSystemLines] = useState<ResearchLine[]>([]);
+  const [allGroups, setAllGroups] = useState<ResearchGroup[]>([]);
+
+  const loadAllSystemLines = async () => {
+    try {
+      const [sysLines, sysGroups] = await Promise.all([
+        groupService.getAllLines(),
+        groupService.getAllGroups(),
+      ]);
+      setAllSystemLines(sysLines);
+      setAllGroups(sysGroups);
+    } catch {
+      // Ignora erro de rede
+    }
+  };
+
   const handleOpenCreate = () => {
     if (lines.length >= 5) {
       alert('Limite atingido! Um grupo de pesquisa pode ter no máximo 5 linhas de pesquisa.');
       return;
     }
+    loadAllSystemLines();
     setEditingLine(null);
     setFormData({
       title: '',
@@ -62,6 +79,7 @@ export const ResearchLineManager: React.FC<Props> = ({
   };
 
   const handleOpenEdit = (line: ResearchLine) => {
+    loadAllSystemLines();
     setEditingLine(line);
     setFormData({
       title: line.title,
@@ -74,6 +92,18 @@ export const ResearchLineManager: React.FC<Props> = ({
   };
 
   const toggleStudentSelection = (studentId: string) => {
+    // Verifica se o aluno já pertence a outra linha de pesquisa (deste grupo ou de outro professor)
+    const assignedLine = allSystemLines.find(
+      l => l.studentIds.includes(studentId) && l.id !== editingLine?.id
+    );
+
+    if (assignedLine) {
+      const assignedGroup = allGroups.find(g => g.id === assignedLine.groupId);
+      const orientadorText = assignedGroup ? ` do orientador(a) ${assignedGroup.leaderTeacherName}` : '';
+      setError(`Este(a) aluno(a) já está matriculado(a) na linha "${assignedLine.title}"${orientadorText}. Um aluno não pode estar em mais de uma linha ao mesmo tempo.`);
+      return;
+    }
+
     const isSelected = formData.selectedStudentIds.includes(studentId);
     if (isSelected) {
       setFormData({
@@ -470,23 +500,42 @@ export const ResearchLineManager: React.FC<Props> = ({
                   ) : (
                     unitStudents.map((student) => {
                       const isSelected = formData.selectedStudentIds.includes(student.uid);
+                      const assignedOtherLine = allSystemLines.find(
+                        l => l.studentIds.includes(student.uid) && l.id !== editingLine?.id
+                      );
+                      const assignedOtherGroup = assignedOtherLine ? allGroups.find(g => g.id === assignedOtherLine.groupId) : null;
+
                       return (
                         <div
                           key={student.uid}
                           onClick={() => toggleStudentSelection(student.uid)}
-                          className={`p-2 rounded-lg text-xs cursor-pointer flex items-center justify-between border transition-all ${
-                            isSelected 
-                              ? 'bg-emerald-50 border-emerald-300 text-[#528521] font-semibold' 
-                              : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
+                          className={`p-2.5 rounded-xl text-xs flex items-center justify-between border transition-all ${
+                            assignedOtherLine
+                              ? 'bg-slate-100/70 border-slate-200 text-slate-400 cursor-not-allowed opacity-80'
+                              : isSelected 
+                              ? 'bg-emerald-50 border-emerald-300 text-[#528521] font-semibold cursor-pointer' 
+                              : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer'
                           }`}
                         >
                           <div className="truncate mr-2">
-                            <p className="truncate text-slate-900 font-medium">{student.name}</p>
-                            <p className="text-xs text-slate-500 truncate">{student.areaOrGrade || student.matricula}</p>
+                            <p className="truncate text-slate-900 font-bold">{student.name}</p>
+                            <p className="text-[11px] text-slate-500 truncate">
+                              {assignedOtherLine ? (
+                                <span className="text-amber-700 font-semibold">
+                                  Matriculado: {assignedOtherLine.title} {assignedOtherGroup ? `(${assignedOtherGroup.leaderTeacherName.split(' ')[0]})` : ''}
+                                </span>
+                              ) : (
+                                student.areaOrGrade || student.matricula || 'Disponível para vinculação'
+                              )}
+                            </p>
                           </div>
                           {isSelected ? (
                             <span className="w-5 h-5 rounded-full bg-[#70B32D] text-white flex items-center justify-center shrink-0">
                               <CheckCircle className="w-3.5 h-3.5" />
+                            </span>
+                          ) : assignedOtherLine ? (
+                            <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold shrink-0">
+                              Em outra linha
                             </span>
                           ) : (
                             <span className="w-5 h-5 rounded-full border border-slate-300 shrink-0" />

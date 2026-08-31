@@ -40,19 +40,15 @@ export const TeacherDashboard: React.FC = () => {
     if (!currentUser) return;
     setIsLoading(true);
     try {
-      let teacherGroup = await groupService.getGroupByLeader(currentUser.uid);
-      
-      // Se não encontrar por UID, busca pela unidade
-      if (!teacherGroup) {
-        const allGroups = await groupService.getAllGroups();
-        teacherGroup = allGroups.find(g => g.unit === currentUser.unit) || null;
-      }
-
+      // Busca ESTRITAMENTE o grupo onde este professor é o líder oficial
+      const teacherGroup = await groupService.getGroupByLeader(currentUser.uid);
       setGroup(teacherGroup);
 
       if (teacherGroup) {
         const groupLines = await groupService.getLinesByGroup(teacherGroup.id);
         setLines(groupLines);
+      } else {
+        setLines([]);
       }
     } finally {
       setIsLoading(false);
