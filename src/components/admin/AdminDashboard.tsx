@@ -44,12 +44,15 @@ import {
   Edit2,
   FolderPlus,
   HelpCircle,
-  UserCheck
+  UserCheck,
+  GripVertical,
+  MoveRight,
+  Sparkles
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const { allUsers, reloadUsers, currentUser } = useAuth();
-  const [activeAdminTab, setActiveAdminTab] = useState<'users' | 'groups' | 'transfers' | 'settings'>('users');
+  const [activeAdminTab, setActiveAdminTab] = useState<'users' | 'groups' | 'transfers' | 'settings'>('groups');
   const [groups, setGroups] = useState<ResearchGroup[]>([]);
   const [lines, setLines] = useState<ResearchLine[]>([]);
   const [selectedUnit, setSelectedUnit] = useState<string>('TODAS');
@@ -101,6 +104,16 @@ export const AdminDashboard: React.FC = () => {
   const [selectedTargetLineId, setSelectedTargetLineId] = useState<string>('UNASSIGN');
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferToast, setTransferToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Estado de Drag and Drop e Transferência Rápida de Linha
+  const [draggedLineId, setDraggedLineId] = useState<string | null>(null);
+  const [draggedSourceGroupId, setDraggedSourceGroupId] = useState<string | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  
+  // Modal Rápido de Mover Linha
+  const [movingLineItem, setMovingLineItem] = useState<{ line: ResearchLine; sourceGroup: ResearchGroup } | null>(null);
+  const [selectedMoveTargetGroupId, setSelectedMoveTargetGroupId] = useState<string>('');
+  const [isMovingLineModalSaving, setIsMovingLineModalSaving] = useState(false);
 
   // Credenciais Geradas e Notificação de E-mail
   const [createdCredentials, setCreatedCredentials] = useState<{
@@ -523,6 +536,110 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // ==========================================
+  // DRAG AND DROP & TRANSFERÊNCIA DE LINHAS
+  // ==========================================
+  const handleDragStart = (e: React.DragEvent, line: ResearchLine, group: ResearchGroup) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ lineId: line.id, sourceGroupId: group.id }));
+    setDraggedLineId(line.id);
+    setDraggedSourceGroupId(group.id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedLineId(null);
+    setDraggedSourceGroupId(null);
+    setDragOverGroupId(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetGroupId: string) => {
+    e.preventDefault();
+    if (dragOverGroupId !== targetGroupId) {
+      setDragOverGroupId(targetGroupId);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDragOverGroupId(null);
+  };
+
+  const handleDropLineOnGroup = async (e: React.DragEvent, targetGroup: ResearchGroup) => {
+    e.preventDefault();
+    setDragOverGroupId(null);
+
+    try {
+      const dataStr = e.dataTransfer.getData('application/json');
+      if (!dataStr) return;
+      const { lineId, sourceGroupId } = JSON.parse(dataStr);
+
+      if (sourceGroupId === targetGroup.id) {
+        return; // Mesmo grupo
+      }
+
+      const targetGroupLines = lines.filter(l => l.groupId === targetGroup.id);
+      if (targetGroupLines.length >= 5) {
+        setTransferToast({
+          message: `O grupo "${targetGroup.title}" já atingiu a capacidade máxima de 5 linhas.`,
+          type: 'error',
+        });
+        setTimeout(() => setTransferToast(null), 4500);
+        return;
+      }
+
+      const draggedLineObj = lines.find(l => l.id === lineId);
+      await groupService.moveLineToGroup(lineId, targetGroup.id);
+      await loadData();
+
+      setTransferToast({
+        message: `✨ Linha "${draggedLineObj?.title || 'Pesquisa'}" transferida com sucesso para o grupo do(a) Prof. ${targetGroup.leaderTeacherName}!`,
+        type: 'success',
+      });
+      setTimeout(() => setTransferToast(null), 4500);
+    } catch (err: any) {
+      setTransferToast({
+        message: 'Erro ao transferir linha: ' + err.message,
+        type: 'error',
+      });
+      setTimeout(() => setTransferToast(null), 5000);
+    } finally {
+      setDraggedLineId(null);
+      setDraggedSourceGroupId(null);
+    }
+  };
+
+  const handleOpenMoveLineModal = (group: ResearchGroup, line: ResearchLine) => {
+    setMovingLineItem({ line, sourceGroup: group });
+    const availableGroups = groups.filter(g => g.id !== group.id);
+    setSelectedMoveTargetGroupId(availableGroups[0]?.id || '');
+  };
+
+  const handleExecuteMoveLineModal = async () => {
+    if (!movingLineItem || !selectedMoveTargetGroupId) return;
+    setIsMovingLineModalSaving(true);
+    try {
+      const destGroup = groups.find(g => g.id === selectedMoveTargetGroupId);
+      if (!destGroup) throw new Error('Grupo de destino não encontrado.');
+
+      await groupService.moveLineToGroup(movingLineItem.line.id, selectedMoveTargetGroupId);
+      await loadData();
+
+      setTransferToast({
+        message: `✨ Linha "${movingLineItem.line.title}" transferida com sucesso para o grupo do(a) Prof. ${destGroup.leaderTeacherName}!`,
+        type: 'success',
+      });
+      setTimeout(() => setTransferToast(null), 4500);
+      setMovingLineItem(null);
+    } catch (err: any) {
+      setTransferToast({
+        message: 'Erro ao transferir linha: ' + err.message,
+        type: 'error',
+      });
+      setTimeout(() => setTransferToast(null), 5000);
+    } finally {
+      setIsMovingLineModalSaving(false);
+    }
+  };
+
+  // ==========================================
   // FUNÇÕES DE TRANSFERÊNCIA DE ALUNOS
   // ==========================================
   const getStudentCurrentAllocation = (studentId: string) => {
@@ -574,14 +691,14 @@ export const AdminDashboard: React.FC = () => {
       
       {/* Toast Notification */}
       {transferToast && (
-        <div className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl border shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-3 duration-200 ${
+        <div className={`fixed bottom-6 right-6 z-50 p-4 rounded-2xl border shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-3 duration-200 ${
           transferToast.type === 'success' 
-            ? 'bg-emerald-900 text-white border-emerald-700' 
-            : 'bg-rose-900 text-white border-rose-700'
+            ? 'bg-emerald-950 text-white border-emerald-600 ring-2 ring-emerald-500/50' 
+            : 'bg-rose-950 text-white border-rose-600 ring-2 ring-rose-500/50'
         }`}>
-          {transferToast.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-300" /> : <AlertCircle className="w-5 h-5 text-rose-300" />}
-          <span className="text-xs font-bold">{transferToast.message}</span>
-          <button onClick={() => setTransferToast(null)} className="p-1 hover:bg-white/20 rounded-lg">
+          {transferToast.type === 'success' ? <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" /> : <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />}
+          <span className="text-xs font-bold leading-snug">{transferToast.message}</span>
+          <button onClick={() => setTransferToast(null)} className="p-1 hover:bg-white/20 rounded-lg cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -600,7 +717,7 @@ export const AdminDashboard: React.FC = () => {
             Painel de Gestão & Administração ICP
           </h1>
           <p className="text-xs sm:text-sm text-blue-100/90 max-w-2xl leading-relaxed">
-            Controle total de usuários, criação e renomeação de grupos de pesquisa, linhas temáticas e alocação/transferência de alunos entre polos.
+            Controle total de usuários, criação e renomeação de grupos de pesquisa, linhas temáticas e transferência com recurso de <strong>arrastar/deslizar linhas</strong> entre grupos.
           </p>
         </div>
 
@@ -645,7 +762,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="mt-2.5 text-[11px] text-slate-500 flex items-center gap-1.5 border-t border-slate-100 pt-2">
             <span className="w-2 h-2 rounded-full bg-[#70B32D]"></span>
-            <span>Orientadores</span>
+            <span>Orientadores Ativos</span>
           </div>
         </div>
 
@@ -713,18 +830,6 @@ export const AdminDashboard: React.FC = () => {
       {/* Navegação de Abas do Administrador */}
       <div className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs flex flex-wrap items-center gap-2">
         <button
-          onClick={() => setActiveAdminTab('users')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-            activeAdminTab === 'users'
-              ? 'bg-[#002B5C] text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Gestão de Usuários ({allUsers.length})</span>
-        </button>
-
-        <button
           onClick={() => setActiveAdminTab('groups')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
             activeAdminTab === 'groups'
@@ -734,6 +839,18 @@ export const AdminDashboard: React.FC = () => {
         >
           <BookOpen className="w-4 h-4 text-[#70B32D]" />
           <span>Gestão de Grupos & Linhas ({groups.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveAdminTab('users')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+            activeAdminTab === 'users'
+              ? 'bg-[#002B5C] text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Gestão de Usuários ({allUsers.length})</span>
         </button>
 
         <button
@@ -762,7 +879,275 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* ABA 1: GESTÃO DE USUÁRIOS */}
+      {/* ABA 1: GESTÃO DE GRUPOS & LINHAS (COM ARRASTAR / DESLIZAR LINHAS) */}
+      {/* ========================================================================= */}
+      {activeAdminTab === 'groups' && (
+        <div className="space-y-6">
+          {/* Instruções de Drag and Drop Interativo */}
+          <div className="bg-gradient-to-r from-blue-50 to-emerald-50 border border-blue-200/80 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#002B5C] text-white flex items-center justify-center shrink-0 shadow-xs">
+                <ArrowRightLeft className="w-4 h-4 text-[#70B32D]" />
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-[#002B5C]">
+                  Transferência Visual de Linhas de Pesquisa
+                </h4>
+                <p className="text-[11px] text-slate-600">
+                  Você pode <strong>clicar e arrastar/deslizar</strong> qualquer card de linha de um grupo para o outro, ou clicar no botão de transferir <strong>(⇄)</strong>.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleOpenCreateGroup}
+              className="bg-[#002B5C] hover:bg-[#003B71] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4 text-[#70B32D]" />
+              <span>+ Criar Novo Grupo</span>
+            </button>
+          </div>
+
+          {filteredGroups.length === 0 ? (
+            <div className="text-center py-12 px-4 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
+              <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="text-sm font-bold text-[#002B5C]">Nenhum Grupo de Pesquisa Encontrado</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Crie o primeiro grupo de pesquisa para vincular aos professores orientadores e alunos.
+              </p>
+              <button
+                onClick={handleOpenCreateGroup}
+                className="bg-[#70B32D] hover:bg-[#5da523] text-white px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2 cursor-pointer shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Criar Grupo Agora</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {filteredGroups.map((group) => {
+                const groupLines = lines.filter(l => l.groupId === group.id);
+                const totalStudentsInGroup = groupLines.reduce((acc, curr) => acc + curr.studentIds.length, 0);
+                const isDragOver = dragOverGroupId === group.id;
+                const isSourceGroup = draggedSourceGroupId === group.id;
+                const isGroupFull = groupLines.length >= 5;
+
+                return (
+                  <div 
+                    key={group.id} 
+                    onDragOver={(e) => handleDragOver(e, group.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDropLineOnGroup(e, group)}
+                    className={`bg-white rounded-3xl border transition-all duration-200 overflow-hidden ${
+                      isDragOver && !isSourceGroup && !isGroupFull
+                        ? 'border-emerald-500 ring-4 ring-emerald-500/20 shadow-2xl scale-[1.01] bg-emerald-50/30'
+                        : isDragOver && isGroupFull
+                        ? 'border-rose-500 ring-4 ring-rose-500/20 shadow-2xl bg-rose-50/30'
+                        : 'border-slate-200 shadow-xs hover:shadow-md'
+                    }`}
+                  >
+                    
+                    {/* Cabeçalho do Grupo */}
+                    <div className="p-5 sm:p-6 bg-slate-50/90 border-b border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="bg-blue-100 text-[#002B5C] font-bold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wide">
+                            {group.unit}
+                          </span>
+                          <span className={`font-bold px-2.5 py-0.5 rounded-md text-[10px] ${
+                            isGroupFull ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-[#528521]'
+                          }`}>
+                            {groupLines.length}/5 Linhas {isGroupFull ? '(Capacidade Máxima)' : ''}
+                          </span>
+                          <span className="bg-slate-200 text-slate-700 font-bold px-2.5 py-0.5 rounded-md text-[10px]">
+                            {totalStudentsInGroup} Alunos Vinculados
+                          </span>
+                        </div>
+                        <h3 className="text-base sm:text-lg font-extrabold text-[#002B5C]">
+                          {group.title}
+                        </h3>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          {group.description || 'Sem descrição cadastrada.'}
+                        </p>
+                        <p className="text-xs text-slate-500 font-medium pt-1">
+                          Orientador Líder: <strong className="text-[#002B5C]">{group.leaderTeacherName}</strong>
+                        </p>
+                      </div>
+
+                      {/* Botões de Ação do Grupo */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleOpenCreateLine(group)}
+                          disabled={groupLines.length >= 5}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-[#528521] border border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Adicionar Linha</span>
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditGroup(group)}
+                          className="bg-blue-50 hover:bg-blue-100 text-[#002B5C] border border-blue-200 p-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                          title="Renomear / Editar Grupo"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteGroup(group)}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 p-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                          title="Excluir Grupo"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Banner de Dropzone Ativo */}
+                    {isDragOver && !isSourceGroup && (
+                      <div className={`p-3 text-center text-xs font-bold flex items-center justify-center gap-2 border-b animate-pulse ${
+                        isGroupFull ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                      }`}>
+                        {isGroupFull ? (
+                          <>
+                            <AlertCircle className="w-4 h-4 text-rose-600" />
+                            <span>Este grupo já está lotado com 5 linhas. Remova ou transfira uma linha antes.</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 text-emerald-600" />
+                            <span>Solte aqui para transferir a linha para o grupo do(a) Prof. {group.leaderTeacherName}!</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Lista de Linhas de Pesquisa do Grupo */}
+                    <div className="p-5 sm:p-6 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-[#002B5C]" />
+                          Linhas de Pesquisa deste Grupo ({groupLines.length})
+                        </h4>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          Arraste para outro grupo para transferir
+                        </span>
+                      </div>
+
+                      {groupLines.length === 0 ? (
+                        <div className={`p-8 rounded-2xl border-2 border-dashed text-center space-y-2 transition-all ${
+                          isDragOver 
+                            ? 'bg-emerald-50 border-emerald-400 text-emerald-800 scale-[1.02]' 
+                            : 'bg-slate-50 border-slate-200 text-slate-500'
+                        }`}>
+                          <Layers className="w-8 h-8 mx-auto opacity-40 text-[#002B5C]" />
+                          <p className="text-xs font-bold text-slate-700">
+                            Nenhuma linha de pesquisa neste grupo ainda.
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            <strong>Arraste e solte uma linha de outro grupo aqui</strong> ou clique no botão "+ Adicionar Linha".
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                          {groupLines.map((line) => {
+                            const isBeingDragged = draggedLineId === line.id;
+
+                            return (
+                              <div 
+                                key={line.id} 
+                                draggable={true}
+                                onDragStart={(e) => handleDragStart(e, line, group)}
+                                onDragEnd={handleDragEnd}
+                                className={`p-4 rounded-2xl border bg-white transition-all flex flex-col justify-between space-y-3 shadow-xs hover:shadow-md cursor-grab active:cursor-grabbing relative group/line ${
+                                  isBeingDragged
+                                    ? 'opacity-40 border-dashed border-[#002B5C] scale-95'
+                                    : 'border-slate-200 hover:border-[#002B5C]'
+                                }`}
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-slate-300 group-hover/line:text-slate-600 transition-colors" title="Arraste para mover para outro grupo">
+                                        <GripVertical className="w-4 h-4" />
+                                      </span>
+                                      <span className="bg-[#002B5C] text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-2xs">
+                                        Linha 0{line.lineNumber}
+                                      </span>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-[#528521] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                                      {line.studentIds.length}/3 Alunos
+                                    </span>
+                                  </div>
+                                  <h5 className="text-xs font-bold text-[#002B5C] leading-snug">
+                                    {line.title}
+                                  </h5>
+                                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                                    Área: {line.area}
+                                  </p>
+                                </div>
+
+                                {/* Alunos na Linha */}
+                                <div className="space-y-1 text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                  <p className="font-bold text-slate-600 text-[10px] uppercase">Alunos Vinculados:</p>
+                                  {line.studentNames.length === 0 ? (
+                                    <p className="text-slate-400 italic text-[10px]">Nenhum aluno matriculado</p>
+                                  ) : (
+                                    line.studentNames.map((name, idx) => (
+                                      <p key={idx} className="text-slate-700 font-medium truncate flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#70B32D] shrink-0"></span>
+                                        <span className="truncate">{name}</span>
+                                      </p>
+                                    ))
+                                  )}
+                                </div>
+
+                                {/* Ações da Linha */}
+                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenMoveLineModal(group, line)}
+                                    className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-[#002B5C] border border-blue-200 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                                    title="Mover esta linha para outro Grupo de Pesquisa"
+                                  >
+                                    <ArrowRightLeft className="w-3 h-3 text-[#70B32D]" />
+                                    <span>Mover</span>
+                                  </button>
+
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditLine(group, line)}
+                                      className="p-1.5 text-slate-500 hover:text-[#002B5C] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                      title="Renomear Linha / Alterar Metodologia"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteLine(line)}
+                                      className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                      title="Excluir Linha"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ABA 2: GESTÃO DE USUÁRIOS */}
       {/* ========================================================================= */}
       {activeAdminTab === 'users' && (
         <div className="space-y-4">
@@ -922,185 +1307,6 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* ABA 2: GESTÃO DE GRUPOS & LINHAS */}
-      {/* ========================================================================= */}
-      {activeAdminTab === 'groups' && (
-        <div className="space-y-6">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-sm font-bold text-[#002B5C] uppercase tracking-wider flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-[#70B32D]" />
-                Grupos de Pesquisa & Linhas Temáticas
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Criação, renomeação, alteração de orientador e gestão completa das linhas
-              </p>
-            </div>
-
-            <button
-              onClick={handleOpenCreateGroup}
-              className="bg-[#002B5C] hover:bg-[#003B71] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-[#70B32D]" />
-              <span>+ Criar Novo Grupo de Pesquisa</span>
-            </button>
-          </div>
-
-          {filteredGroups.length === 0 ? (
-            <div className="text-center py-12 px-4 bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
-              <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
-              <h3 className="text-sm font-bold text-[#002B5C]">Nenhum Grupo de Pesquisa Encontrado</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Crie o primeiro grupo de pesquisa para vincular aos professores orientadores e alunos.
-              </p>
-              <button
-                onClick={handleOpenCreateGroup}
-                className="bg-[#70B32D] hover:bg-[#5da523] text-white px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2 cursor-pointer shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Criar Grupo Agora</span>
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6">
-              {filteredGroups.map((group) => {
-                const groupLines = lines.filter(l => l.groupId === group.id);
-                const totalStudentsInGroup = groupLines.reduce((acc, curr) => acc + curr.studentIds.length, 0);
-
-                return (
-                  <div key={group.id} className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all">
-                    
-                    {/* Cabeçalho do Grupo */}
-                    <div className="p-5 sm:p-6 bg-slate-50/80 border-b border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="bg-blue-100 text-[#002B5C] font-bold px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wide">
-                            {group.unit}
-                          </span>
-                          <span className="bg-emerald-100 text-[#528521] font-bold px-2.5 py-0.5 rounded-md text-[10px]">
-                            {groupLines.length}/5 Linhas
-                          </span>
-                          <span className="bg-slate-200 text-slate-700 font-bold px-2.5 py-0.5 rounded-md text-[10px]">
-                            {totalStudentsInGroup} Alunos Vinculados
-                          </span>
-                        </div>
-                        <h3 className="text-base sm:text-lg font-bold text-[#002B5C]">
-                          {group.title}
-                        </h3>
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          {group.description || 'Sem descrição cadastrada.'}
-                        </p>
-                        <p className="text-xs text-slate-500 font-medium pt-1">
-                          Orientador Líder: <strong className="text-[#002B5C]">{group.leaderTeacherName}</strong>
-                        </p>
-                      </div>
-
-                      {/* Botões de Ação do Grupo */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => handleOpenCreateLine(group)}
-                          disabled={groupLines.length >= 5}
-                          className="bg-emerald-50 hover:bg-emerald-100 text-[#528521] border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Adicionar Linha</span>
-                        </button>
-                        <button
-                          onClick={() => handleOpenEditGroup(group)}
-                          className="bg-blue-50 hover:bg-blue-100 text-[#002B5C] border border-blue-200 p-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                          title="Renomear / Editar Grupo"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteGroup(group)}
-                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 p-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                          title="Excluir Grupo"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Lista de Linhas de Pesquisa do Grupo */}
-                    <div className="p-5 sm:p-6 space-y-3">
-                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5 text-[#002B5C]" />
-                        Linhas de Pesquisa deste Grupo ({groupLines.length})
-                      </h4>
-
-                      {groupLines.length === 0 ? (
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center text-xs text-slate-500">
-                          Nenhuma linha de pesquisa criada neste grupo ainda.
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {groupLines.map((line) => (
-                            <div key={line.id} className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-[#002B5C] transition-all flex flex-col justify-between space-y-3 shadow-2xs">
-                              <div>
-                                <div className="flex items-center justify-between gap-1 mb-1">
-                                  <span className="bg-[#002B5C] text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                                    Linha 0{line.lineNumber}
-                                  </span>
-                                  <span className="text-[10px] font-semibold text-[#528521] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                                    {line.studentIds.length}/3 Alunos
-                                  </span>
-                                </div>
-                                <h5 className="text-xs font-bold text-[#002B5C] leading-snug">
-                                  {line.title}
-                                </h5>
-                                <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                                  Área: {line.area}
-                                </p>
-                              </div>
-
-                              {/* Alunos na Linha */}
-                              <div className="space-y-1 text-[11px] bg-slate-50 p-2 rounded-xl border border-slate-100">
-                                <p className="font-bold text-slate-600 text-[10px] uppercase">Alunos Vinculados:</p>
-                                {line.studentNames.length === 0 ? (
-                                  <p className="text-slate-400 italic text-[10px]">Nenhum aluno matriculado</p>
-                                ) : (
-                                  line.studentNames.map((name, idx) => (
-                                    <p key={idx} className="text-slate-700 font-medium truncate flex items-center gap-1">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-[#70B32D]"></span>
-                                      {name}
-                                    </p>
-                                  ))
-                                )}
-                              </div>
-
-                              {/* Ações da Linha */}
-                              <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1">
-                                <button
-                                  onClick={() => handleOpenEditLine(group, line)}
-                                  className="p-1.5 text-slate-500 hover:text-[#002B5C] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                                  title="Renomear Linha / Alterar Metodologia"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteLine(line)}
-                                  className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Excluir Linha"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
       {/* ABA 3: ALOCAÇÃO & TRANSFERÊNCIA DE ALUNOS */}
       {/* ========================================================================= */}
       {activeAdminTab === 'transfers' && (
@@ -1251,6 +1457,78 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
+      {/* MODAL: MOVER LINHA DE PESQUISA PARA OUTRO GRUPO */}
+      {/* ========================================================================= */}
+      {movingLineItem && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-[#002B5C] p-5 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2.5">
+                <ArrowRightLeft className="w-5 h-5 text-[#70B32D]" />
+                <div>
+                  <h3 className="font-bold text-sm text-white uppercase tracking-wider">
+                    Mover Linha para Outro Grupo
+                  </h3>
+                  <p className="text-xs text-blue-200">{movingLineItem.line.title}</p>
+                </div>
+              </div>
+              <button onClick={() => setMovingLineItem(null)} className="text-white/70 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1.5">
+                <p><strong className="text-[#002B5C]">Grupo Atual:</strong> {movingLineItem.sourceGroup.title}</p>
+                <p><strong className="text-[#002B5C]">Orientador Atual:</strong> {movingLineItem.sourceGroup.leaderTeacherName}</p>
+                <p><strong className="text-[#002B5C]">Alunos Vinculados ({movingLineItem.line.studentNames.length}):</strong> {movingLineItem.line.studentNames.join(', ') || 'Nenhum'}</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#002B5C] uppercase tracking-wide mb-1.5">
+                  Selecione o Grupo de Pesquisa de Destino:
+                </label>
+                <select
+                  value={selectedMoveTargetGroupId}
+                  onChange={(e) => setSelectedMoveTargetGroupId(e.target.value)}
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white font-medium cursor-pointer"
+                >
+                  {groups.filter(g => g.id !== movingLineItem.sourceGroup.id).map(g => {
+                    const gLines = lines.filter(l => l.groupId === g.id);
+                    const isFull = gLines.length >= 5;
+                    return (
+                      <option key={g.id} value={g.id} disabled={isFull}>
+                        [{g.unit.replace('SESI ', '')}] {g.title} — Prof. {g.leaderTeacherName} ({gLines.length}/5 Linhas) {isFull ? '(LOTADO)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMovingLineItem(null)}
+                  className="px-4 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isMovingLineModalSaving || !selectedMoveTargetGroupId}
+                  onClick={handleExecuteMoveLineModal}
+                  className="bg-[#002B5C] hover:bg-[#003B71] text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-[#70B32D]" />
+                  <span>{isMovingLineModalSaving ? 'Transferindo...' : 'Confirmar Transferência de Grupo'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL: CRIAR / EDITAR GRUPO DE PESQUISA */}
       {/* ========================================================================= */}
       {isGroupModalOpen && (
@@ -1288,7 +1566,7 @@ export const AdminDashboard: React.FC = () => {
                   required
                   value={groupFormData.title}
                   onChange={(e) => setGroupFormData({ ...groupFormData, title: e.target.value })}
-                  placeholder="Ex: Matemática, Cultura Digital e Pensamento Computacional"
+                  placeholder="Ex: Ciências da Natureza e suas Aplicações"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white"
                 />
               </div>
@@ -1476,7 +1754,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-4">
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1">
                 <p><strong className="text-[#002B5C]">E-mail:</strong> {transferringStudent.email}</p>
                 <p><strong className="text-[#002B5C]">Unidade Atual:</strong> {transferringStudent.unit}</p>
                 <p><strong className="text-[#002B5C]">Matrícula:</strong> {transferringStudent.matricula || '—'}</p>
@@ -1489,7 +1767,7 @@ export const AdminDashboard: React.FC = () => {
                 <select
                   value={selectedTargetLineId}
                   onChange={(e) => setSelectedTargetLineId(e.target.value)}
-                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white font-medium"
+                  className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white font-medium cursor-pointer"
                 >
                   <option value="UNASSIGN">❌ Deixar Sem Linha (Aluno Livre / Desvinculado)</option>
                   {groups.map(group => {
@@ -1555,7 +1833,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10"
+                className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1778,7 +2056,7 @@ export const AdminDashboard: React.FC = () => {
                   <p className="text-xs text-blue-200">Autenticação Mestra</p>
                 </div>
               </div>
-              <button onClick={() => setIsPasswordModalOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg">
+              <button onClick={() => setIsPasswordModalOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1848,7 +2126,7 @@ export const AdminDashboard: React.FC = () => {
                   <p className="text-xs text-blue-200">Disparo Automático de Credenciais</p>
                 </div>
               </div>
-              <button onClick={() => setIsEmailSettingsOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg">
+              <button onClick={() => setIsEmailSettingsOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>

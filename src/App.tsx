@@ -68,7 +68,7 @@ const MainApp: React.FC = () => {
             <span className="hidden sm:inline text-slate-300">•</span>
             <span className="flex items-center gap-1.5 text-slate-600 font-semibold">
               <span className="w-2 h-2 rounded-full bg-[#70B32D]"></span>
-              Versão 2.7.0
+              Versão 2.7.1
             </span>
           </div>
 

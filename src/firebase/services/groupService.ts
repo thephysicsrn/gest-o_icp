@@ -115,6 +115,18 @@ export const groupService = {
     await deleteDoc(doc(db, 'lines', id));
   },
 
+  moveLineToGroup: async (lineId: string, targetGroupId: string): Promise<void> => {
+    const targetLines = await groupService.getLinesByGroup(targetGroupId);
+    if (targetLines.length >= 5) {
+      throw new Error('O grupo de pesquisa de destino já possui o limite máximo de 5 linhas de pesquisa.');
+    }
+    const nextLineNumber = targetLines.length + 1;
+    await updateDoc(doc(db, 'lines', lineId), {
+      groupId: targetGroupId,
+      lineNumber: nextLineNumber,
+    });
+  },
+
   transferStudent: async (studentId: string, studentName: string, targetLineId: string | null): Promise<void> => {
     // 1. Remove o aluno de qualquer linha atual onde esteja matriculado
     const allLinesSnap = await getDocs(collection(db, 'lines'));
