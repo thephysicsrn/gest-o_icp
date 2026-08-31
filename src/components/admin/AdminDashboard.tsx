@@ -713,11 +713,11 @@ export const AdminDashboard: React.FC = () => {
             </span>
             <span className="text-xs text-blue-200 font-semibold">Coordenação Geral SESI RN</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             Painel de Gestão & Administração ICP
           </h1>
-          <p className="text-xs sm:text-sm text-blue-100/90 max-w-2xl leading-relaxed">
-            Controle total de usuários, criação e renomeação de grupos de pesquisa, linhas temáticas e transferência com recurso de <strong>arrastar/deslizar linhas</strong> entre grupos.
+          <p className="text-xs sm:text-sm text-blue-100 max-w-2xl leading-relaxed">
+            Controle total de usuários, criação e renomeação de grupos de pesquisa, linhas temáticas e transferência com recurso de <strong className="text-white font-bold">arrastar/deslizar linhas</strong> entre grupos.
           </p>
         </div>
 
