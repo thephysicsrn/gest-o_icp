@@ -1,6 +1,8 @@
 import { initializeApp, getApps } from 'firebase/app';
 import {
   getAuth,
+  initializeAuth,
+  inMemoryPersistence,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -25,11 +27,18 @@ import { UserProfile, UserRole, SesiUnit } from '../../types';
 
 const usersCol = () => collection(db, 'users');
 
+// Cria instância secundária com persistência 100% em memória para NUNCA deslogar o professor/administrador
 const getSecondaryAuth = () => {
   const name = 'SecondaryAuthApp';
   const existingApp = getApps().find(app => app.name === name);
   const app = existingApp || initializeApp(firebaseConfig, name);
-  return getAuth(app);
+  try {
+    return initializeAuth(app, {
+      persistence: inMemoryPersistence,
+    });
+  } catch {
+    return getAuth(app);
+  }
 };
 
 const toUserProfile = (data: any, uid: string): UserProfile => ({
@@ -90,9 +99,36 @@ export const authService = {
     const defaultPassword = userData.role === 'student' ? 'sesi@aluno2026' : userData.role === 'teacher' ? 'sesi@prof2026' : 'sesi@admin2026';
     const password = userData.password || defaultPassword;
     const cleanEmail = userData.email.trim().toLowerCase();
+
+    // 1. Tenta criação serverless via Firebase Admin (isolamento absoluto e sem conflito de sessão)
+    try {
+      const response = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: userData.name.trim(),
+          email: cleanEmail,
+          password,
+          role: userData.role,
+          unit: userData.unit,
+          matricula: userData.matricula.trim() || `SESI-${Math.floor(1000 + Math.random() * 9000)}`,
+          phone: userData.phone || '',
+          areaOrGrade: userData.areaOrGrade || '',
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.profile) {
+          return result.profile;
+        }
+      }
+    } catch {
+      // Se a rota serverless não responder (ex: dev local sem Vercel CLI), segue para fallback em memória
+    }
+
+    // 2. Fallback via cliente secundário com persistência em memória (inMemoryPersistence)
     let uid = '';
-    
-    // Usa instância secundária para não deslogar o Administrador logado
     const secondaryAuth = getSecondaryAuth();
 
     try {
@@ -102,7 +138,6 @@ export const authService = {
       await signOut(secondaryAuth);
     } catch (err: any) {
       if (err.code === 'auth/email-already-in-use') {
-        // Se a conta já existe no Auth (ex: recadastro de usuário excluído), localiza ou gera ID consistente
         const snap = await getDocs(query(collection(db, 'users'), where('email', '==', cleanEmail)));
         if (!snap.empty) {
           uid = snap.docs[0].id;
@@ -133,7 +168,7 @@ export const authService = {
     await setDoc(doc(db, 'users', uid), {
       ...newProfile,
       createdAt: serverTimestamp(),
-    });
+    }, { merge: true });
 
     return newProfile;
   },

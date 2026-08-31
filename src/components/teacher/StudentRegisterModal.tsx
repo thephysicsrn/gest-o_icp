@@ -166,6 +166,21 @@ export const StudentRegisterModal: React.FC<Props> = ({
     }
   };
 
+  const handleCadastrarOutro = () => {
+    setFormData({
+      name: '',
+      email: '',
+      matricula: '',
+      areaOrGrade: '',
+      phone: '',
+      password: '',
+    });
+    setCreatedCredentials(null);
+    setEmailStatus(null);
+    setCopied(false);
+    setError(null);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-lg rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -274,13 +289,24 @@ export const StudentRegisterModal: React.FC<Props> = ({
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full bg-[#002B5C] hover:bg-[#003B71] text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition-all"
-              >
-                Concluir
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCadastrarOutro}
+                  className="bg-blue-50 hover:bg-blue-100 text-[#002B5C] border border-blue-200 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                >
+                  <UserPlus className="w-4 h-4 text-[#002B5C]" />
+                  <span>+ Cadastrar Outro Aluno</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full bg-[#002B5C] hover:bg-[#003B71] text-white py-2.5 rounded-xl text-xs font-bold shadow-md transition-all"
+                >
+                  Concluir
+                </button>
+              </div>
             </div>
           </div>
         ) : (
