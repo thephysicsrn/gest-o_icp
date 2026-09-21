@@ -12,6 +12,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config';
+import { sanitizeFirestoreData } from '../firestoreHelper';
 import { ActivityTask, TaskStatus } from '../../types';
 
 const toTask = (data: any, id: string): ActivityTask => ({
@@ -66,12 +67,13 @@ export const activityService = {
 
   saveTask: async (data: Partial<ActivityTask>): Promise<ActivityTask> => {
     const { id, createdAt, updatedAt, ...cleanData } = data;
-    const ref = await addDoc(collection(db, 'tasks'), {
+    const sanitized = sanitizeFirestoreData({
       ...cleanData,
       status: cleanData.status || 'pending',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    const ref = await addDoc(collection(db, 'tasks'), sanitized);
     const snap = await getDoc(ref);
     return toTask(snap.data()!, ref.id);
   },
@@ -81,7 +83,12 @@ export const activityService = {
   },
 
   updateTask: async (id: string, data: Partial<ActivityTask>): Promise<void> => {
-    await updateDoc(doc(db, 'tasks', id), { ...data, updatedAt: serverTimestamp() });
+    const { id: _, createdAt: __, ...updates } = data;
+    const sanitized = sanitizeFirestoreData({
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
+    await updateDoc(doc(db, 'tasks', id), sanitized);
   },
 
   updateTaskStatus: async (

@@ -11,6 +11,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config';
+import { sanitizeFirestoreData } from '../firestoreHelper';
 import { PhotoRecord } from '../../types';
 
 const toPhoto = (data: any, id: string): PhotoRecord => ({
@@ -42,10 +43,11 @@ export const photoService = {
   },
 
   savePhoto: async (data: Omit<PhotoRecord, 'id' | 'createdAt'>): Promise<PhotoRecord> => {
-    const ref = await addDoc(collection(db, 'photos'), {
+    const sanitized = sanitizeFirestoreData({
       ...data,
       createdAt: serverTimestamp(),
     });
+    const ref = await addDoc(collection(db, 'photos'), sanitized);
     const snap = await getDoc(ref);
     return toPhoto(snap.data()!, ref.id);
   },

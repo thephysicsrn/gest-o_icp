@@ -23,6 +23,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db, firebaseConfig } from '../config';
+import { sanitizeFirestoreData } from '../firestoreHelper';
 import { UserProfile, UserRole, SesiUnit } from '../../types';
 
 const usersCol = () => collection(db, 'users');
@@ -165,17 +166,20 @@ export const authService = {
       createdAt: new Date().toISOString(),
     };
 
-    await setDoc(doc(db, 'users', uid), {
+    const sanitized = sanitizeFirestoreData({
       ...newProfile,
       createdAt: serverTimestamp(),
     }, { merge: true });
+
+    await setDoc(doc(db, 'users', uid), sanitized);
 
     return newProfile;
   },
 
   updateUser: async (uid: string, updates: Partial<UserProfile>): Promise<UserProfile> => {
     const ref = doc(db, 'users', uid);
-    await updateDoc(ref, updates);
+    const sanitized = sanitizeFirestoreData(updates);
+    await updateDoc(ref, sanitized);
     const snap = await getDoc(ref);
     return toUserProfile(snap.data()!, uid);
   },

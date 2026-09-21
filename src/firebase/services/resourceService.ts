@@ -12,6 +12,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config';
+import { sanitizeFirestoreData } from '../firestoreHelper';
 import { LineResource } from '../../types';
 
 const toResource = (data: any, id: string): LineResource => ({
@@ -39,10 +40,11 @@ export const resourceService = {
   },
 
   saveResource: async (data: Omit<LineResource, 'id' | 'createdAt'>): Promise<LineResource> => {
-    const ref = await addDoc(collection(db, 'resources'), {
+    const sanitized = sanitizeFirestoreData({
       ...data,
       createdAt: serverTimestamp(),
     });
+    const ref = await addDoc(collection(db, 'resources'), sanitized);
     const snap = await getDoc(ref);
     return toResource(snap.data()!, ref.id);
   },
@@ -52,7 +54,9 @@ export const resourceService = {
   },
 
   updateResource: async (id: string, data: Partial<LineResource>): Promise<void> => {
-    await updateDoc(doc(db, 'resources', id), data);
+    const { id: _, createdAt: __, ...updates } = data;
+    const sanitized = sanitizeFirestoreData(updates);
+    await updateDoc(doc(db, 'resources', id), sanitized);
   },
 
   deleteResource: async (id: string): Promise<void> => {

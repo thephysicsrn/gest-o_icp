@@ -107,41 +107,39 @@ export const AttendanceManager: React.FC<Props> = ({ group, lines, unitStudents 
     e.preventDefault();
     setError(null);
 
-    if (!meetingTitle || !meetingDate || !agenda) {
+    if (!meetingTitle.trim() || !meetingDate || !agenda.trim()) {
       setError('Preencha o título, a data e a pauta da reunião.');
       return;
     }
 
     try {
-      let lineTitle: string | undefined = undefined;
-      if (selectedLineId !== 'ALL') {
-        const found = lines.find(l => l.id === selectedLineId);
-        lineTitle = found ? found.title : undefined;
+      const isSpecificLine = selectedLineId && selectedLineId !== 'ALL';
+      const targetLine = isSpecificLine ? lines.find(l => l.id === selectedLineId) : undefined;
+
+      const meetingPayload: any = {
+        date: meetingDate,
+        time: meetingTime || '',
+        title: meetingTitle.trim(),
+        agenda: agenda.trim(),
+        summary: summary?.trim() || '',
+        records,
+      };
+
+      if (isSpecificLine && targetLine) {
+        meetingPayload.lineId = targetLine.id;
+        meetingPayload.lineTitle = targetLine.title;
       }
 
       if (editingMeeting) {
-        await attendanceService.updateMeeting(editingMeeting.id, {
-          date: meetingDate,
-          time: meetingTime,
-          title: meetingTitle,
-          lineId: selectedLineId === 'ALL' ? undefined : selectedLineId,
-          lineTitle,
-          agenda,
-          summary,
-          records,
-        });
+        if (!isSpecificLine) {
+          // Sinaliza remoção de linha para o Firestore
+          meetingPayload.lineId = '';
+          meetingPayload.lineTitle = '';
+        }
+        await attendanceService.updateMeeting(editingMeeting.id, meetingPayload);
       } else {
-        await attendanceService.createMeeting({
-          groupId: group.id,
-          lineId: selectedLineId === 'ALL' ? undefined : selectedLineId,
-          lineTitle,
-          date: meetingDate,
-          time: meetingTime,
-          title: meetingTitle,
-          agenda,
-          summary,
-          records,
-        });
+        meetingPayload.groupId = group.id;
+        await attendanceService.createMeeting(meetingPayload);
       }
 
       await loadMeetings();

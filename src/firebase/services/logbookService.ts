@@ -12,6 +12,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config';
+import { sanitizeFirestoreData } from '../firestoreHelper';
 import { LogbookEntry, SupervisorValidationStatus } from '../../types';
 
 const toEntry = (data: any, id: string): LogbookEntry => ({
@@ -57,11 +58,12 @@ export const logbookService = {
 
   saveEntry: async (data: Partial<LogbookEntry>): Promise<LogbookEntry> => {
     const { id, createdAt, ...cleanData } = data;
-    const ref = await addDoc(collection(db, 'logbooks'), {
+    const sanitized = sanitizeFirestoreData({
       ...cleanData,
       supervisorStatus: cleanData.supervisorStatus || 'pending',
       createdAt: serverTimestamp(),
     });
+    const ref = await addDoc(collection(db, 'logbooks'), sanitized);
     const snap = await getDoc(ref);
     return toEntry(snap.data()!, ref.id);
   },
@@ -71,7 +73,9 @@ export const logbookService = {
   },
 
   updateEntry: async (id: string, data: Partial<LogbookEntry>): Promise<void> => {
-    await updateDoc(doc(db, 'logbooks', id), data);
+    const { id: _, createdAt: __, ...updates } = data;
+    const sanitized = sanitizeFirestoreData(updates);
+    await updateDoc(doc(db, 'logbooks', id), sanitized);
   },
 
   reviewEntry: async (id: string, status: SupervisorValidationStatus, comment?: string): Promise<void> => {

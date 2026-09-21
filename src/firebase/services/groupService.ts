@@ -12,6 +12,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config';
+import { sanitizeFirestoreData } from '../firestoreHelper';
 import { ResearchGroup, ResearchLine } from '../../types';
 
 const toGroup = (data: any, id: string): ResearchGroup => ({
@@ -58,11 +59,12 @@ export const groupService = {
 
   saveGroup: async (data: Partial<ResearchGroup>): Promise<ResearchGroup> => {
     const { id, createdAt, updatedAt, ...cleanData } = data;
-    const ref = await addDoc(collection(db, 'groups'), {
+    const sanitized = sanitizeFirestoreData({
       ...cleanData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    const ref = await addDoc(collection(db, 'groups'), sanitized);
     const snap = await getDoc(ref);
     return toGroup(snap.data()!, ref.id);
   },
@@ -72,7 +74,12 @@ export const groupService = {
   },
 
   updateGroup: async (id: string, data: Partial<ResearchGroup>): Promise<void> => {
-    await updateDoc(doc(db, 'groups', id), { ...data, updatedAt: serverTimestamp() });
+    const { id: _, createdAt: __, ...updates } = data;
+    const sanitized = sanitizeFirestoreData({
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
+    await updateDoc(doc(db, 'groups', id), sanitized);
   },
 
   deleteGroup: async (id: string): Promise<void> => {
@@ -95,10 +102,11 @@ export const groupService = {
 
   saveLine: async (data: Partial<ResearchLine>): Promise<ResearchLine> => {
     const { id, createdAt, ...cleanData } = data;
-    const ref = await addDoc(collection(db, 'lines'), {
+    const sanitized = sanitizeFirestoreData({
       ...cleanData,
       createdAt: serverTimestamp(),
     });
+    const ref = await addDoc(collection(db, 'lines'), sanitized);
     const snap = await getDoc(ref);
     return toLine(snap.data()!, ref.id);
   },
@@ -108,7 +116,9 @@ export const groupService = {
   },
 
   updateLine: async (id: string, data: Partial<ResearchLine>): Promise<void> => {
-    await updateDoc(doc(db, 'lines', id), data);
+    const { id: _, createdAt: __, ...updates } = data;
+    const sanitized = sanitizeFirestoreData(updates);
+    await updateDoc(doc(db, 'lines', id), sanitized);
   },
 
   deleteLine: async (id: string): Promise<void> => {
