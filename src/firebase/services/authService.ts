@@ -169,9 +169,9 @@ export const authService = {
     const sanitized = sanitizeFirestoreData({
       ...newProfile,
       createdAt: serverTimestamp(),
-    }, { merge: true });
+    });
 
-    await setDoc(doc(db, 'users', uid), sanitized);
+    await setDoc(doc(db, 'users', uid), sanitized, { merge: true });
 
     return newProfile;
   },
