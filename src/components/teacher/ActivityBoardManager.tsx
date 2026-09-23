@@ -429,7 +429,7 @@ export const ActivityBoardManager: React.FC<Props> = ({ group, lines, unitStuden
                   </a>
                   {feedbackModalTask.submissionNotes && (
                     <p className="text-slate-600 mt-2 italic">
-                      "{feedbackModalTask.submissionNotes}"
+                      &ldquo;{feedbackModalTask.submissionNotes}&rdquo;
                     </p>
                   )}
                 </div>
@@ -545,7 +545,7 @@ function renderTaskCardLight(
 
       {task.teacherFeedback && (
         <div className="bg-slate-50 p-2 rounded-lg text-xs text-slate-700 italic border-l-2 border-[#70B32D]">
-          "{task.teacherFeedback}"
+          &ldquo;{task.teacherFeedback}&rdquo;
         </div>
       )}
 

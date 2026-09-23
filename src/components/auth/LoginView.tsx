@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { 
-  Building2, 
   GraduationCap, 
   ShieldCheck, 
-  User, 
   Lock, 
   Mail, 
   ArrowRight, 
@@ -18,11 +16,9 @@ import {
   Flame,
   Globe2,
   Compass,
-  ArrowDown,
   ChevronRight,
   FlaskConical,
   Award,
-  CheckCircle2,
   Sparkle
 } from 'lucide-react';
 

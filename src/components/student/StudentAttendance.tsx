@@ -10,8 +10,7 @@ import {
   Calendar, 
   Clock, 
   CheckCircle2, 
-  AlertCircle, 
-  Percent
+  AlertCircle
 } from 'lucide-react';
 
 interface Props {

@@ -57,7 +57,7 @@ export const logbookService = {
   },
 
   saveEntry: async (data: Partial<LogbookEntry>): Promise<LogbookEntry> => {
-    const { id, createdAt, ...cleanData } = data;
+    const { id: _id, createdAt: _createdAt, ...cleanData } = data;
     const sanitized = sanitizeFirestoreData({
       ...cleanData,
       supervisorStatus: cleanData.supervisorStatus || 'pending',

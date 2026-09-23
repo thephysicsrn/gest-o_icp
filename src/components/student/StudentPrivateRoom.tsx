@@ -22,9 +22,9 @@ interface Props {
   line: ResearchLine | null;
 }
 
-export const StudentPrivateRoom: React.FC<Props> = ({ student, group, line }) => {
+export const StudentPrivateRoom: React.FC<Props> = ({ student: _student, group, line }) => {
   const [resources, setResources] = useState<LineResource[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [_isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const loadResources = async () => {

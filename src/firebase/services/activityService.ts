@@ -66,7 +66,7 @@ export const activityService = {
   },
 
   saveTask: async (data: Partial<ActivityTask>): Promise<ActivityTask> => {
-    const { id, createdAt, updatedAt, ...cleanData } = data;
+    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...cleanData } = data;
     const sanitized = sanitizeFirestoreData({
       ...cleanData,
       status: cleanData.status || 'pending',

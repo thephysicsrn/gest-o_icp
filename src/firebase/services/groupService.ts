@@ -58,7 +58,7 @@ export const groupService = {
   },
 
   saveGroup: async (data: Partial<ResearchGroup>): Promise<ResearchGroup> => {
-    const { id, createdAt, updatedAt, ...cleanData } = data;
+    const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...cleanData } = data;
     const sanitized = sanitizeFirestoreData({
       ...cleanData,
       createdAt: serverTimestamp(),
@@ -101,7 +101,7 @@ export const groupService = {
   },
 
   saveLine: async (data: Partial<ResearchLine>): Promise<ResearchLine> => {
-    const { id, createdAt, ...cleanData } = data;
+    const { id: _id, createdAt: _createdAt, ...cleanData } = data;
     const sanitized = sanitizeFirestoreData({
       ...cleanData,
       createdAt: serverTimestamp(),

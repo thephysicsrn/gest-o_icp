@@ -15,7 +15,6 @@ import {
   MessageSquare, 
   GraduationCap, 
   Layers, 
-  CheckCircle, 
   AlertCircle,
   Phone,
   Mail, 
@@ -62,9 +61,8 @@ export const StudentUnitManager: React.FC<Props> = ({
     }
   };
 
-  useEffect(() => {
-    loadSystemInfo();
-  }, [group.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadSystemInfo(); }, [group.id]);
 
   // Linha deste professor
   const getMyStudentLine = (studentId: string): ResearchLine | undefined => {

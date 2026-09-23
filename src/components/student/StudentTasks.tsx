@@ -10,7 +10,6 @@ import {
   CheckSquare, 
   Clock, 
   CheckCircle2, 
-  ExternalLink, 
   MessageSquare, 
   Send, 
   X, 

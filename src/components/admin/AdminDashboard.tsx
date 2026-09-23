@@ -25,14 +25,7 @@ import {
   CheckCircle2, 
   AlertCircle,
   X,
-  Key,
-  Copy,
-  Check,
-  RefreshCw,
   Mail,
-  ExternalLink,
-  MessageSquare,
-  Globe,
   Settings,
   Send,
   Lock,
@@ -43,10 +36,7 @@ import {
   Plus,
   Edit2,
   FolderPlus,
-  HelpCircle,
-  UserCheck,
   GripVertical,
-  MoveRight,
   Sparkles
 } from 'lucide-react';
 
@@ -125,7 +115,7 @@ export const AdminDashboard: React.FC = () => {
     matricula?: string;
     areaOrGrade?: string;
   } | null>(null);
-  const [copiedMessage, setCopiedMessage] = useState(false);
+  const [_copiedMessage, setCopiedMessage] = useState(false);
   const [emailSentStatus, setEmailSentStatus] = useState<string | null>(null);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
@@ -153,9 +143,8 @@ export const AdminDashboard: React.FC = () => {
     setLines(fetchedLines);
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadData(); }, []);
 
   const teachersList = allUsers.filter(u => u.role === 'teacher');
   const studentsList = allUsers.filter(u => u.role === 'student');
