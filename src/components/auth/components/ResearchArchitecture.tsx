@@ -32,10 +32,12 @@ export const ResearchArchitecture: React.FC = () => {
       </div>
 
       {/* Navegação Interativa entre os Pilares */}
-      <div className="flex flex-wrap gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200 w-fit">
+      <div role="tablist" aria-label="Pilares da Arquitetura da Pesquisa" className="flex flex-wrap gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200 w-fit">
         <button
+          role="tab"
+          aria-selected={activeTab === 'estrutura'}
           onClick={() => setActiveTab('estrutura')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002B5C] focus-visible:ring-offset-1 ${
             activeTab === 'estrutura'
               ? 'bg-white text-[#002B5C] shadow-sm'
               : 'text-slate-600 hover:text-[#002B5C]'
@@ -46,8 +48,10 @@ export const ResearchArchitecture: React.FC = () => {
         </button>
 
         <button
+          role="tab"
+          aria-selected={activeTab === 'diario'}
           onClick={() => setActiveTab('diario')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002B5C] focus-visible:ring-offset-1 ${
             activeTab === 'diario'
               ? 'bg-white text-[#002B5C] shadow-sm'
               : 'text-slate-600 hover:text-[#002B5C]'
@@ -58,8 +62,10 @@ export const ResearchArchitecture: React.FC = () => {
         </button>
 
         <button
+          role="tab"
+          aria-selected={activeTab === 'validacao'}
           onClick={() => setActiveTab('validacao')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002B5C] focus-visible:ring-offset-1 ${
             activeTab === 'validacao'
               ? 'bg-white text-[#002B5C] shadow-sm'
               : 'text-slate-600 hover:text-[#002B5C]'

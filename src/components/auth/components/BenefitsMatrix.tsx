@@ -121,11 +121,13 @@ export const BenefitsMatrix: React.FC = () => {
       </div>
 
       {/* Seletor Dinâmico de Três Vias */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div role="tablist" aria-label="Benefícios por Perfil de Usuário" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         
         <button
+          role="tab"
+          aria-selected={selectedRole === 'student'}
           onClick={() => setSelectedRole('student')}
-          className={`p-4 rounded-2xl border text-left transition-all duration-300 flex items-center gap-3.5 ${
+          className={`p-4 rounded-2xl border text-left transition-all duration-300 flex items-center gap-3.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002B5C] focus-visible:ring-offset-2 ${
             selectedRole === 'student'
               ? 'border-[#002B5C] bg-white shadow-md ring-1 ring-[#002B5C]'
               : 'border-slate-200 bg-white/60 hover:bg-white text-slate-600'
@@ -143,8 +145,10 @@ export const BenefitsMatrix: React.FC = () => {
         </button>
 
         <button
+          role="tab"
+          aria-selected={selectedRole === 'teacher'}
           onClick={() => setSelectedRole('teacher')}
-          className={`p-4 rounded-2xl border text-left transition-all duration-300 flex items-center gap-3.5 ${
+          className={`p-4 rounded-2xl border text-left transition-all duration-300 flex items-center gap-3.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#70B32D] focus-visible:ring-offset-2 ${
             selectedRole === 'teacher'
               ? 'border-[#70B32D] bg-white shadow-md ring-1 ring-[#70B32D]'
               : 'border-slate-200 bg-white/60 hover:bg-white text-slate-600'
@@ -162,8 +166,10 @@ export const BenefitsMatrix: React.FC = () => {
         </button>
 
         <button
+          role="tab"
+          aria-selected={selectedRole === 'institution'}
           onClick={() => setSelectedRole('institution')}
-          className={`p-4 rounded-2xl border text-left transition-all duration-300 flex items-center gap-3.5 ${
+          className={`p-4 rounded-2xl border text-left transition-all duration-300 flex items-center gap-3.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#005696] focus-visible:ring-offset-2 ${
             selectedRole === 'institution'
               ? 'border-[#005696] bg-white shadow-md ring-1 ring-[#005696]'
               : 'border-slate-200 bg-white/60 hover:bg-white text-slate-600'

@@ -113,7 +113,7 @@ export const StudentDashboard: React.FC = () => {
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
           }`}
         >
-          <BookOpen className={`w-4 h-4 ${activeTab === 'logbook' ? 'text-[#70B32D]' : 'text-slate-400'}`} />
+          <BookOpen className={`w-4 h-4 ${activeTab === 'logbook' ? 'text-[#70B32D]' : 'text-slate-500'}`} />
           <span>Diário de Bordo</span>
         </button>
 
@@ -125,7 +125,7 @@ export const StudentDashboard: React.FC = () => {
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
           }`}
         >
-          <Camera className={`w-4 h-4 ${activeTab === 'photos' ? 'text-[#70B32D]' : 'text-slate-400'}`} />
+          <Camera className={`w-4 h-4 ${activeTab === 'photos' ? 'text-[#70B32D]' : 'text-slate-500'}`} />
           <span>Fotos & Evidências</span>
         </button>
 
@@ -137,7 +137,7 @@ export const StudentDashboard: React.FC = () => {
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
           }`}
         >
-          <FolderLock className={`w-4 h-4 ${activeTab === 'private_room' ? 'text-[#70B32D]' : 'text-slate-400'}`} />
+          <FolderLock className={`w-4 h-4 ${activeTab === 'private_room' ? 'text-[#70B32D]' : 'text-slate-500'}`} />
           <span>Sala Particular</span>
         </button>
 
@@ -149,7 +149,7 @@ export const StudentDashboard: React.FC = () => {
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
           }`}
         >
-          <CheckSquare className={`w-4 h-4 ${activeTab === 'tasks' ? 'text-[#70B32D]' : 'text-slate-400'}`} />
+          <CheckSquare className={`w-4 h-4 ${activeTab === 'tasks' ? 'text-[#70B32D]' : 'text-slate-500'}`} />
           <span>Minhas Tarefas</span>
         </button>
 
@@ -161,7 +161,7 @@ export const StudentDashboard: React.FC = () => {
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
           }`}
         >
-          <Calendar className={`w-4 h-4 ${activeTab === 'attendance' ? 'text-[#70B32D]' : 'text-slate-400'}`} />
+          <Calendar className={`w-4 h-4 ${activeTab === 'attendance' ? 'text-[#70B32D]' : 'text-slate-500'}`} />
           <span>Minha Frequência</span>
         </button>
 

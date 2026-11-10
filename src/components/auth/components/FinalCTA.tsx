@@ -41,7 +41,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onAccessClick, onRulesClick 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <button
             onClick={onAccessClick}
-            className="w-full sm:w-auto bg-[#70B32D] hover:bg-[#86D636] text-[#002B5C] px-8 py-3.5 rounded-2xl font-extrabold text-xs uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            className="w-full sm:w-auto bg-[#70B32D] hover:bg-[#86D636] text-[#002B5C] px-8 py-3.5 rounded-2xl font-extrabold text-xs uppercase tracking-wider shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#002B5C]"
           >
             <span>Acessar Terminal Institucional</span>
             <ArrowRight className="w-4 h-4 text-[#002B5C]" />
@@ -49,7 +49,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onAccessClick, onRulesClick 
 
           <button
             onClick={onRulesClick}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl border border-white/20 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl border border-white/20 bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#002B5C]"
           >
             <BookOpen className="w-4 h-4 text-emerald-300" />
             <span>Consultar Regras do Diário</span>

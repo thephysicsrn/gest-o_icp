@@ -191,7 +191,7 @@ export const ScientificGazette: React.FC<ScientificGazetteProps> = ({ onLearnMor
               <div className="p-4 pt-0">
                 <button 
                   onClick={onLearnMoreClick}
-                  className="text-[11px] text-[#002B5C] font-bold hover:text-[#70B32D] flex items-center gap-1 transition-colors cursor-pointer"
+                  className="text-[11px] text-[#002B5C] font-bold hover:text-[#528521] flex items-center gap-1 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002B5C] rounded-md px-1 -mx-1"
                 >
                   <span>Ver impacto no portal</span>
                   <ChevronRight className="w-3.5 h-3.5 text-[#70B32D]" />

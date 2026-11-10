@@ -306,15 +306,17 @@ export const StudentLogbook: React.FC<Props> = ({ student, group, line }) => {
 
                   <button
                     onClick={() => handleOpenEdit(entry)}
-                    className="p-1.5 text-slate-400 hover:text-[#002B5C] hover:bg-blue-50 rounded-lg transition-colors"
+                    className="p-1.5 text-slate-500 hover:text-[#002B5C] hover:bg-blue-50 rounded-lg transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
                     title="Editar Registro"
+                    aria-label="Editar Registro"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleDelete(entry.id)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
                     title="Excluir"
+                    aria-label="Excluir Registro"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

@@ -5,7 +5,8 @@ import {
   Lock, 
   ArrowRight, 
   AlertCircle, 
-  FlaskConical
+  FlaskConical,
+  Loader2
 } from 'lucide-react';
 
 interface LabShowcaseAndLoginProps {
@@ -99,7 +100,8 @@ export const LabShowcaseAndLogin: React.FC<LabShowcaseAndLoginProps> = ({
             <button
               type="button"
               onClick={() => setSelectedPhotoIndex(0)}
-              className={`text-left p-3 rounded-2xl border transition-all duration-200 flex items-center gap-3 ${
+              aria-pressed={selectedPhotoIndex === 0}
+              className={`text-left p-3 rounded-2xl border transition-all duration-200 flex items-center gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002B5C] ${
                 selectedPhotoIndex === 0
                   ? 'border-[#002B5C] bg-blue-50/70 shadow-xs ring-2 ring-[#002B5C]'
                   : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100 text-slate-600'
@@ -108,6 +110,8 @@ export const LabShowcaseAndLogin: React.FC<LabShowcaseAndLoginProps> = ({
               <img 
                 src="/alunos-laboratorio-1.jpg" 
                 alt="Prática Laboratorial" 
+                loading="lazy"
+                decoding="async"
                 className="w-12 h-10 object-cover rounded-lg shrink-0 border border-slate-200" 
               />
               <div className="truncate">
@@ -119,7 +123,8 @@ export const LabShowcaseAndLogin: React.FC<LabShowcaseAndLoginProps> = ({
             <button
               type="button"
               onClick={() => setSelectedPhotoIndex(1)}
-              className={`text-left p-3 rounded-2xl border transition-all duration-200 flex items-center gap-3 ${
+              aria-pressed={selectedPhotoIndex === 1}
+              className={`text-left p-3 rounded-2xl border transition-all duration-200 flex items-center gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002B5C] ${
                 selectedPhotoIndex === 1
                   ? 'border-[#002B5C] bg-blue-50/70 shadow-xs ring-2 ring-[#002B5C]'
                   : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100 text-slate-600'
@@ -128,6 +133,8 @@ export const LabShowcaseAndLogin: React.FC<LabShowcaseAndLoginProps> = ({
               <img 
                 src="/alunos-laboratorio-2.jpg" 
                 alt="Diário de Bordo" 
+                loading="lazy"
+                decoding="async"
                 className="w-12 h-10 object-cover rounded-lg shrink-0 border border-slate-200" 
               />
               <div className="truncate">
@@ -167,35 +174,39 @@ export const LabShowcaseAndLogin: React.FC<LabShowcaseAndLoginProps> = ({
             {/* Formulário de Acesso */}
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div>
-                <label className="block text-xs font-bold text-[#002B5C] mb-1.5">
+                <label htmlFor="login-email" className="block text-xs font-bold text-[#002B5C] mb-1.5">
                   E-mail Institucional
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
+                    id="login-email"
                     type="email"
+                    autoComplete="username"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="usuario@sesi.org.br"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#002B5C] focus:bg-white transition-all shadow-2xs"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#002B5C] focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all shadow-2xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#002B5C] mb-1.5">
+                <label htmlFor="login-password" className="block text-xs font-bold text-[#002B5C] mb-1.5">
                   Senha de Acesso
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                   <input
+                    id="login-password"
                     type="password"
+                    autoComplete="current-password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#002B5C] focus:bg-white transition-all shadow-2xs"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#002B5C] focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all shadow-2xs"
                   />
                 </div>
               </div>
@@ -203,10 +214,14 @@ export const LabShowcaseAndLogin: React.FC<LabShowcaseAndLoginProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#002B5C] hover:bg-[#003B71] text-white py-3 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+                className="w-full bg-[#002B5C] hover:bg-[#003B71] text-white py-3 rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed mt-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#70B32D] focus-visible:ring-offset-2"
               >
                 <span>{loading ? 'Validando Acesso...' : 'Entrar no Sistema'}</span>
-                <ArrowRight className="w-4 h-4 text-[#70B32D]" />
+                {loading ? (
+                  <Loader2 className="w-4 h-4 text-[#70B32D] animate-spin" />
+                ) : (
+                  <ArrowRight className="w-4 h-4 text-[#70B32D]" />
+                )}
               </button>
             </form>
           </div>

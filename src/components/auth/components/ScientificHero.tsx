@@ -72,7 +72,7 @@ export const ScientificHero: React.FC<ScientificHeroProps> = ({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
             <button
               onClick={onAccessClick}
-              className="bg-[#002B5C] hover:bg-[#003B71] text-white px-7 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2.5 active:scale-95 group"
+              className="bg-[#002B5C] hover:bg-[#003B71] text-white px-7 py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2.5 active:scale-95 group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#70B32D] focus-visible:ring-offset-2"
             >
               <span>Acessar Terminal de Pesquisa</span>
               <ArrowRight className="w-4 h-4 text-[#70B32D] group-hover:translate-x-1 transition-transform" />
@@ -80,7 +80,7 @@ export const ScientificHero: React.FC<ScientificHeroProps> = ({
 
             <button
               onClick={onExploreClick}
-              className="px-6 py-3.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#002B5C] hover:border-[#002B5C]/30 font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 active:scale-95"
+              className="px-6 py-3.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-[#002B5C] hover:border-[#002B5C]/30 font-bold text-xs uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002B5C] focus-visible:ring-offset-2"
             >
               <Compass className="w-4 h-4 text-slate-500" />
               <span>Ver Arquitetura da Pesquisa</span>

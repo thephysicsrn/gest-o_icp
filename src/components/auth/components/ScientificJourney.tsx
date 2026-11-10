@@ -110,15 +110,17 @@ export const ScientificJourney: React.FC = () => {
         {/* Linha Conectora de Fundo */}
         <div className="hidden lg:block absolute top-1/2 left-4 right-4 h-0.5 bg-slate-200 -translate-y-1/2 z-0"></div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 relative z-10">
+        <div role="tablist" aria-label="Etapas da Jornada Científica" className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 relative z-10">
           {SCIENTIFIC_STAGES.map((stage, idx) => {
             const isCurrent = idx === activeStageIndex;
             const isCompleted = idx < activeStageIndex;
             return (
               <button
                 key={stage.number}
+                role="tab"
+                aria-selected={isCurrent}
                 onClick={() => setActiveStageIndex(idx)}
-                className={`p-3 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between h-24 ${
+                className={`p-3 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between h-24 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002B5C] focus-visible:ring-offset-2 ${
                   isCurrent
                     ? 'border-[#002B5C] bg-[#002B5C] text-white shadow-md ring-2 ring-blue-100 scale-102'
                     : isCompleted
