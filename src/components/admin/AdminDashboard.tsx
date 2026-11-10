@@ -37,7 +37,8 @@ import {
   Edit2,
   FolderPlus,
   GripVertical,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -208,12 +209,12 @@ export const AdminDashboard: React.FC = () => {
     setEmailConfigStatus(null);
     try {
       await emailService.saveEmailjsConfig(emailjsForm);
-      setEmailConfigStatus('✅ Configurações do EmailJS salvas com sucesso! O disparo automático está ativo.');
+      setEmailConfigStatus('Configurações do EmailJS salvas com sucesso! O disparo automático está ativo.');
       setTimeout(() => {
         setIsEmailSettingsOpen(false);
       }, 1500);
     } catch (err: any) {
-      setEmailConfigStatus('❌ Erro ao salvar: ' + err.message);
+      setEmailConfigStatus('Erro ao salvar: ' + err.message);
     } finally {
       setIsSavingConfig(false);
     }
@@ -229,9 +230,9 @@ export const AdminDashboard: React.FC = () => {
     try {
       const targetEmail = currentUser?.email || 'mateuszeca13@gmail.com';
       await emailService.testEmailjs(emailjsForm, targetEmail);
-      setEmailConfigStatus(`✅ Teste enviado com sucesso para ${targetEmail}! Verifique sua caixa de entrada.`);
+      setEmailConfigStatus(`Teste enviado com sucesso para ${targetEmail}! Verifique sua caixa de entrada.`);
     } catch (err: any) {
-      setEmailConfigStatus('❌ Erro no teste EmailJS: ' + (err.text || err.message));
+      setEmailConfigStatus('Erro no teste EmailJS: ' + (err.text || err.message));
     } finally {
       setIsTestingEmail(false);
     }
@@ -579,7 +580,7 @@ export const AdminDashboard: React.FC = () => {
       await loadData();
 
       setTransferToast({
-        message: `✨ Linha "${draggedLineObj?.title || 'Pesquisa'}" transferida com sucesso para o grupo do(a) Prof. ${targetGroup.leaderTeacherName}!`,
+        message: `Linha "${draggedLineObj?.title || 'Pesquisa'}" transferida com sucesso para o grupo do(a) Prof. ${targetGroup.leaderTeacherName}!`,
         type: 'success',
       });
       setTimeout(() => setTransferToast(null), 4500);
@@ -612,7 +613,7 @@ export const AdminDashboard: React.FC = () => {
       await loadData();
 
       setTransferToast({
-        message: `✨ Linha "${movingLineItem.line.title}" transferida com sucesso para o grupo do(a) Prof. ${destGroup.leaderTeacherName}!`,
+        message: `Linha "${movingLineItem.line.title}" transferida com sucesso para o grupo do(a) Prof. ${destGroup.leaderTeacherName}!`,
         type: 'success',
       });
       setTimeout(() => setTransferToast(null), 4500);
@@ -883,7 +884,7 @@ export const AdminDashboard: React.FC = () => {
                   Transferência Visual de Linhas de Pesquisa
                 </h4>
                 <p className="text-[11px] text-slate-600">
-                  Você pode <strong>clicar e arrastar/deslizar</strong> qualquer card de linha de um grupo para o outro, ou clicar no botão de transferir <strong>(⇄)</strong>.
+                  Você pode <strong>clicar e arrastar/deslizar</strong> qualquer card de linha de um grupo para o outro, ou clicar no botão <strong>Mover</strong>.
                 </p>
               </div>
             </div>
@@ -1105,16 +1106,18 @@ export const AdminDashboard: React.FC = () => {
                                     <button
                                       type="button"
                                       onClick={() => handleOpenEditLine(group, line)}
-                                      className="p-1.5 text-slate-500 hover:text-[#002B5C] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                      className="p-1.5 text-slate-500 hover:text-[#002B5C] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
                                       title="Renomear Linha / Alterar Metodologia"
+                                      aria-label="Renomear Linha ou Alterar Metodologia"
                                     >
                                       <Edit2 className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => handleDeleteLine(line)}
-                                      className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                      className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
                                       title="Excluir Linha"
+                                      aria-label="Excluir Linha de Pesquisa"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
@@ -1450,7 +1453,7 @@ export const AdminDashboard: React.FC = () => {
       {/* ========================================================================= */}
       {movingLineItem && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div role="dialog" aria-modal="true" aria-label="Mover Linha para Outro Grupo" className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-[#002B5C] p-5 flex items-center justify-between text-white">
               <div className="flex items-center gap-2.5">
                 <ArrowRightLeft className="w-5 h-5 text-[#70B32D]" />
@@ -1522,7 +1525,7 @@ export const AdminDashboard: React.FC = () => {
       {/* ========================================================================= */}
       {isGroupModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div role="dialog" aria-modal="true" aria-label={editingGroup ? 'Editar Grupo de Pesquisa' : 'Criar Novo Grupo de Pesquisa'} className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-[#002B5C] p-5 flex items-center justify-between text-white">
               <div className="flex items-center gap-2.5">
                 <BookOpen className="w-5 h-5 text-[#70B32D]" />
@@ -1633,7 +1636,7 @@ export const AdminDashboard: React.FC = () => {
       {/* ========================================================================= */}
       {isLineModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div role="dialog" aria-modal="true" aria-label={editingLine ? 'Editar Linha de Pesquisa' : 'Nova Linha de Pesquisa'} className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-[#002B5C] p-5 flex items-center justify-between text-white">
               <div className="flex items-center gap-2.5">
                 <Layers className="w-5 h-5 text-[#70B32D]" />
@@ -1726,7 +1729,7 @@ export const AdminDashboard: React.FC = () => {
       {/* ========================================================================= */}
       {transferringStudent && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div role="dialog" aria-modal="true" aria-label="Alocar ou Transferir Aluno" className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-[#002B5C] p-5 flex items-center justify-between text-white">
               <div className="flex items-center gap-2.5">
                 <ArrowRightLeft className="w-5 h-5 text-[#70B32D]" />
@@ -1758,11 +1761,11 @@ export const AdminDashboard: React.FC = () => {
                   onChange={(e) => setSelectedTargetLineId(e.target.value)}
                   className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-[#002B5C] focus:bg-white font-medium cursor-pointer"
                 >
-                  <option value="UNASSIGN">❌ Deixar Sem Linha (Aluno Livre / Desvinculado)</option>
+                  <option value="UNASSIGN">Deixar Sem Linha (Aluno Livre / Desvinculado)</option>
                   {groups.map(group => {
                     const groupLines = lines.filter(l => l.groupId === group.id);
                     return (
-                      <optgroup key={group.id} label={`🏛️ [${group.unit.replace('SESI ', '')}] ${group.title} (Prof. ${group.leaderTeacherName})`}>
+                      <optgroup key={group.id} label={`[${group.unit.replace('SESI ', '')}] ${group.title} (Prof. ${group.leaderTeacherName})`}>
                         {groupLines.map(line => {
                           const isFull = line.studentIds.length >= 3 && !line.studentIds.includes(transferringStudent.uid);
                           return (
@@ -1849,7 +1852,11 @@ export const AdminDashboard: React.FC = () => {
                     ? 'bg-blue-50 border-blue-200 text-[#002B5C]' 
                     : 'bg-emerald-50 border-emerald-200 text-emerald-800'
                 }`}>
-                  <Mail className={`w-4 h-4 shrink-0 ${isSendingEmail ? 'animate-bounce text-[#002B5C]' : 'text-[#70B32D]'}`} />
+                  {isSendingEmail ? (
+                    <Loader2 className="w-4 h-4 shrink-0 animate-spin text-[#002B5C]" />
+                  ) : (
+                    <Mail className="w-4 h-4 shrink-0 text-[#70B32D]" />
+                  )}
                   <div className="flex-1">
                     <p className="font-bold">
                       {isSendingEmail ? 'Disparando e-mail em segundo plano...' : 'E-mail disparado automaticamente!'}

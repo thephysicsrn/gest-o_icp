@@ -155,7 +155,7 @@ export const ResearchArchitecture: React.FC = () => {
                     <span className="text-[10px] font-bold text-[#528521] bg-emerald-50 px-2 py-0.5 rounded">
                       Linha 01
                     </span>
-                    <span className="text-[10px] text-slate-400">Até 3 alunos</span>
+                    <span className="text-[10px] text-slate-500 font-medium">Até 3 alunos</span>
                   </div>
                   <p className="text-xs font-bold text-[#002B5C]">Energias Renováveis & H2V</p>
                   <p className="text-[10px] text-slate-500">Ensaios de eletrólise solar</p>
@@ -166,7 +166,7 @@ export const ResearchArchitecture: React.FC = () => {
                     <span className="text-[10px] font-bold text-[#002B5C] bg-blue-50 px-2 py-0.5 rounded">
                       Linha 02
                     </span>
-                    <span className="text-[10px] text-slate-400">Até 3 alunos</span>
+                    <span className="text-[10px] text-slate-500 font-medium">Até 3 alunos</span>
                   </div>
                   <p className="text-xs font-bold text-[#002B5C]">Automação e Sensores IoT</p>
                   <p className="text-[10px] text-slate-500">Irrigação inteligente no semiárido</p>
@@ -312,7 +312,7 @@ export const ResearchArchitecture: React.FC = () => {
               </div>
 
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 space-y-2 text-xs">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold">
                   <span>DOCUMENTO HOMOLOGADO</span>
                   <span>ICP-SESI-RN-2026</span>
                 </div>

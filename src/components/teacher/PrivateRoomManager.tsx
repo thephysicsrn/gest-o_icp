@@ -18,7 +18,8 @@ import {
   AlertCircle, 
   X,
   Users,
-  FolderLock
+  FolderLock,
+  Check
 } from 'lucide-react';
 
 interface Props {
@@ -312,7 +313,7 @@ export const PrivateRoomManager: React.FC<Props> = ({
       {/* Modal Adicionar Material */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div role="dialog" aria-modal="true" aria-label="Compartilhar na Sala Privada" className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-[#002B5C] p-4 flex items-center justify-between text-white">
               <div className="flex items-center gap-2">
                 <FolderLock className="w-4 h-4 text-[#70B32D]" />
@@ -400,8 +401,9 @@ export const PrivateRoomManager: React.FC<Props> = ({
                     className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:bg-blue-50 file:text-[#002B5C] file:font-semibold"
                   />
                   {fileName && (
-                    <p className="text-xs text-[#528521] font-semibold">
-                      ✓ {fileName} ({fileSize})
+                    <p className="text-xs text-[#528521] font-semibold flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{fileName} ({fileSize})</span>
                     </p>
                   )}
                 </div>

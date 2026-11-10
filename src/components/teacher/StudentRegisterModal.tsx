@@ -75,7 +75,7 @@ export const StudentRegisterModal: React.FC<Props> = ({
     matricula: string;
     areaOrGrade: string;
   }) => {
-    return `Olá, ${creds.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN foi realizado com sucesso como *Aluno(a) Pesquisador(a)*.\n\n🌐 *Portal de Acesso:*\n${OFFICIAL_SITE_URL}\n\n📌 *Seus Dados de Acesso:*\n• E-mail: ${creds.email}\n• Senha Inicial: ${creds.password || 'sesi@aluno2026'}\n• Matrícula SESI: ${creds.matricula}\n• Série/Turma: ${creds.areaOrGrade || 'Ensino Médio'}\n• Polo SESI: ${unit}\n\nAcesse a plataforma para acompanhar suas atividades, reuniões e Diário de Bordo Científico!\n\nAtenciosamente,\nEquipe SESI ICP`;
+    return `Olá, ${creds.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN foi realizado com sucesso como *Aluno(a) Pesquisador(a)*.\n\n*Portal de Acesso:*\n${OFFICIAL_SITE_URL}\n\n*Seus Dados de Acesso:*\n• E-mail: ${creds.email}\n• Senha Inicial: ${creds.password || 'sesi@aluno2026'}\n• Matrícula SESI: ${creds.matricula}\n• Série/Turma: ${creds.areaOrGrade || 'Ensino Médio'}\n• Polo SESI: ${unit}\n\nAcesse a plataforma para acompanhar suas atividades, reuniões e Diário de Bordo Científico!\n\nAtenciosamente,\nEquipe SESI ICP`;
   };
 
   const handleCopyCredentials = () => {
@@ -183,7 +183,7 @@ export const StudentRegisterModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div role="dialog" aria-modal="true" aria-label="Cadastrar Novo Bolsista" className="bg-white w-full max-w-lg rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header do Modal */}
         <div className="bg-[#002B5C] px-6 py-4 text-white flex items-center justify-between shrink-0">

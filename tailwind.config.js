@@ -8,31 +8,25 @@ export default {
     extend: {
       colors: {
         sesi: {
-          blue: {
-            DEFAULT: '#003B71',
-            dark: '#002548',
-            light: '#005696',
+          navy: {
+            DEFAULT: '#002B5C',
+            dark: '#001D3D',
+            light: '#003B71',
             50: '#F0F6FC',
             100: '#E1EDF8',
             200: '#B8D6F2',
-            600: '#005696',
-            700: '#003B71',
-            800: '#00284D',
-            900: '#001A33',
           },
-          red: {
-            DEFAULT: '#E30613',
-            dark: '#B0040E',
-            light: '#FF3340',
-            50: '#FEF2F2',
-            100: '#FEE2E2',
-            500: '#E30613',
-            600: '#C70510',
+          green: {
+            DEFAULT: '#70B32D',
+            forest: '#528521',
+            light: '#86D636',
+            50: '#F0FDF4',
+            100: '#DCFCE7',
           },
-          cyan: {
-            DEFAULT: '#00A3E0',
-            light: '#40BFEF',
-            dark: '#007AA8',
+          blue: {
+            DEFAULT: '#005696',
+            dark: '#003B71',
+            light: '#007AA8',
           }
         }
       },

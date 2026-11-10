@@ -27,3 +27,6 @@ dist-ssr
 *.sln
 *.sw?
 senhas.txt
+
+# Impeccable platform binaries (downloaded on demand)
+**/scripts/bin/

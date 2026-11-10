@@ -163,7 +163,7 @@ export const ScientificJourney: React.FC = () => {
               <span className="text-xs font-mono font-bold text-[#70B32D] bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
                 ETAPA {current.number} DE 07
               </span>
-              <span className="text-xs text-slate-400 font-medium">Ciclo Oficial ICP SESI</span>
+              <span className="text-xs text-slate-500 font-medium">Ciclo Oficial ICP SESI</span>
             </div>
 
             <div className="space-y-1">

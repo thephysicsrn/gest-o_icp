@@ -168,6 +168,8 @@ export const ScientificGazette: React.FC<ScientificGazetteProps> = ({ onLearnMor
                   <img 
                     src={noticia.imagem} 
                     alt={noticia.titulo} 
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute top-2 left-2 bg-[#002B5C]/90 backdrop-blur-xs text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold">
@@ -176,7 +178,7 @@ export const ScientificGazette: React.FC<ScientificGazetteProps> = ({ onLearnMor
                 </div>
 
                 <div className="p-4 space-y-1.5">
-                  <span className="text-[10px] font-semibold text-slate-400">{noticia.data}</span>
+                  <span className="text-[10px] font-semibold text-slate-500">{noticia.data}</span>
                   <h3 className="text-xs font-bold text-[#002B5C] leading-snug group-hover:text-[#003B71] transition-colors">
                     {noticia.titulo}
                   </h3>
@@ -313,7 +315,7 @@ export const ScientificGazette: React.FC<ScientificGazetteProps> = ({ onLearnMor
                 <span className="text-base font-extrabold text-[#70B32D]">
                   {dica.numero}
                 </span>
-                <BookOpen className="w-4 h-4 text-slate-400 group-hover:text-[#002B5C] transition-colors" />
+                <BookOpen className="w-4 h-4 text-slate-500 group-hover:text-[#002B5C] transition-colors" />
               </div>
               <h3 className="text-xs font-bold text-[#002B5C]">
                 {dica.titulo}

@@ -56,10 +56,10 @@ export const ScientificHero: React.FC<ScientificHeroProps> = ({
           <div className="space-y-3">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#002B5C] tracking-tight leading-[1.08] font-sans">
               A Pesquisa Escolar Conduzida com{' '}
-              <span className="relative inline-block text-transparent bg-clip-text bg-gradient-to-r from-[#002B5C] via-[#005696] to-[#70B32D]">
+              <span className="text-[#005696]">
                 Rigor, Dados
               </span>{' '}
-              e Método Científico<span className="text-[#70B32D]">.</span>
+              e Método Científico<span className="text-[#528521]">.</span>
             </h1>
 
             <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
@@ -153,8 +153,8 @@ export const ScientificHero: React.FC<ScientificHeroProps> = ({
               </div>
 
               <div className="text-right border-l border-slate-100 pl-3">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Padrão</span>
-                <span className="text-xs font-extrabold text-[#70B32D]">FEBRACE</span>
+                <span className="text-[10px] uppercase font-bold text-slate-500 block">Padrão</span>
+                <span className="text-xs font-extrabold text-[#528521]">FEBRACE</span>
               </div>
             </div>
 
@@ -179,7 +179,7 @@ export const ScientificHero: React.FC<ScientificHeroProps> = ({
       <div className="mt-8 pt-6 border-t border-slate-200/80 grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
         
         <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
             <MapPin className="w-3.5 h-3.5 text-[#70B32D]" />
             <span>3 Polos Potiguares</span>
           </div>
@@ -189,7 +189,7 @@ export const ScientificHero: React.FC<ScientificHeroProps> = ({
         </div>
 
         <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
             <Layers className="w-3.5 h-3.5 text-[#005696]" />
             <span>Estrutura de Pesquisa</span>
           </div>
@@ -199,7 +199,7 @@ export const ScientificHero: React.FC<ScientificHeroProps> = ({
         </div>
 
         <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
             <BookOpen className="w-3.5 h-3.5 text-[#70B32D]" />
             <span>Metodologia Rigorosa</span>
           </div>
@@ -209,7 +209,7 @@ export const ScientificHero: React.FC<ScientificHeroProps> = ({
         </div>
 
         <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
             <Sparkle className="w-3.5 h-3.5 text-amber-500" />
             <span>Homologação</span>
           </div>

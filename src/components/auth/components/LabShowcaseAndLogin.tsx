@@ -72,6 +72,8 @@ export const LabShowcaseAndLogin: React.FC<LabShowcaseAndLoginProps> = ({
             <img 
               src={selectedPhotoIndex === 0 ? '/alunos-laboratorio-1.jpg' : '/alunos-laboratorio-2.jpg'}
               alt="Alunos no laboratório do SESI"
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
             
@@ -216,12 +218,12 @@ export const LabShowcaseAndLogin: React.FC<LabShowcaseAndLoginProps> = ({
                 <ShieldCheck className="w-3.5 h-3.5 text-[#70B32D]" />
                 Autenticação criptografada
               </span>
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+              <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
                 Ano 2026
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-[10px] text-slate-400">
+            <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
               <span>Perfis: Aluno Bolsista • Orientador • Coordenação</span>
               <span className="text-[#002B5C] font-semibold">SESI RN</span>
             </div>

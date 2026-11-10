@@ -129,7 +129,7 @@ export const StudentUnitManager: React.FC<Props> = ({
       lineInfo = `• Linha de Pesquisa: Linha 0${otherInfo.line.lineNumber} - ${otherInfo.line.title}\n• Orientador(a): ${otherInfo.group?.leaderTeacherName}\n`;
     }
 
-    return `Olá, ${student.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN está ativo como *Aluno(a) Pesquisador(a)*.\n\n🌐 *Portal de Acesso:*\n${OFFICIAL_SITE_URL}\n\n📌 *Seus Dados de Acesso:*\n• E-mail: ${student.email}\n• Senha Inicial: sesi@aluno2026\n• Matrícula SESI: ${student.matricula}\n• Série/Turma: ${student.areaOrGrade || 'Ensino Médio'}\n• Polo SESI: ${unit}\n${lineInfo}\nAcesse a plataforma para acompanhar suas atividades e preencher o Diário de Bordo!\n\nAtenciosamente,\nEquipe SESI ICP`;
+    return `Olá, ${student.name}!\n\nSeu cadastro no Sistema de Iniciação Científica (ICP) das Escolas SESI RN está ativo como *Aluno(a) Pesquisador(a)*.\n\n*Portal de Acesso:*\n${OFFICIAL_SITE_URL}\n\n*Seus Dados de Acesso:*\n• E-mail: ${student.email}\n• Senha Inicial: sesi@aluno2026\n• Matrícula SESI: ${student.matricula}\n• Série/Turma: ${student.areaOrGrade || 'Ensino Médio'}\n• Polo SESI: ${unit}\n${lineInfo}\nAcesse a plataforma para acompanhar suas atividades e preencher o Diário de Bordo!\n\nAtenciosamente,\nEquipe SESI ICP`;
   };
 
   const handleCopyAccess = (student: UserProfile) => {

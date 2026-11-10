@@ -528,15 +528,17 @@ function renderTaskCardLight(
           )}
           <button
             onClick={() => onFeedback(task)}
-            className="text-slate-400 hover:text-[#002B5C] p-1"
+            className="text-slate-500 hover:text-[#002B5C] p-1.5 rounded-lg hover:bg-slate-100 min-h-[32px] min-w-[32px] flex items-center justify-center transition-colors"
             title="Parecer do Professor"
+            aria-label="Dar parecer sobre esta atividade"
           >
             <MessageSquare className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => onDelete(task.id)}
-            className="text-slate-400 hover:text-red-600 p-1"
+            className="text-slate-500 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 min-h-[32px] min-w-[32px] flex items-center justify-center transition-colors"
             title="Excluir"
+            aria-label="Excluir atividade"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -544,7 +546,7 @@ function renderTaskCardLight(
       </div>
 
       {task.teacherFeedback && (
-        <div className="bg-slate-50 p-2 rounded-lg text-xs text-slate-700 italic border-l-2 border-[#70B32D]">
+        <div className="bg-slate-50 p-2.5 rounded-lg text-xs text-slate-700 italic border border-slate-200/80">
           &ldquo;{task.teacherFeedback}&rdquo;
         </div>
       )}

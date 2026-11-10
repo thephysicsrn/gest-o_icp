@@ -176,21 +176,21 @@ const USERS_SEED = [
 ];
 
 async function seed() {
-  console.log('🧹 [1/3] Limpando dados antigos no Cloud Firestore...');
+  console.log('[1/3] Limpando dados antigos no Cloud Firestore...');
   const collectionsToClear = ['groups', 'lines', 'meetings', 'tasks', 'resources', 'logbooks', 'photos'];
   for (const colName of collectionsToClear) {
     try {
       const snap = await getDocs(collection(db, colName));
-      console.log(`  🗑️ Limpando coleção '${colName}' (${snap.docs.length} documentos encontrados)...`);
+      console.log(`  Limpando coleção '${colName}' (${snap.docs.length} documentos encontrados)...`);
       for (const docSnap of snap.docs) {
         await deleteDoc(doc(db, colName, docSnap.id));
       }
     } catch (err: any) {
-      console.warn(`  ⚠️ Aviso ao limpar coleção '${colName}':`, err.message);
+      console.warn(`  Aviso ao limpar coleção '${colName}':`, err.message);
     }
   }
 
-  console.log('\n🌱 [2/3] Autenticando e atualizando perfis no Firebase...');
+  console.log('\n[2/3] Autenticando e atualizando perfis no Firebase...');
   const uids: Record<string, string> = {};
 
   for (const user of USERS_SEED) {
@@ -199,14 +199,14 @@ async function seed() {
       const cred = await createUserWithEmailAndPassword(auth, user.email, user.password);
       await updateProfile(cred.user, { displayName: user.name });
       uid = cred.user.uid;
-      console.log(`  ✅ Criado no Auth: ${user.email} (UID: ${uid})`);
+      console.log(`  Criado no Auth: ${user.email} (UID: ${uid})`);
     } catch (e: any) {
       if (e.code === 'auth/email-already-in-use') {
         const cred = await signInWithEmailAndPassword(auth, user.email, user.password);
         uid = cred.user.uid;
-        console.log(`  🔑 Login efetuado: ${user.email} (UID: ${uid})`);
+        console.log(`  Login efetuado: ${user.email} (UID: ${uid})`);
       } else {
-        console.error(`  ❌ Erro no Auth para ${user.email}:`, e.message);
+        console.error(`  Erro no Auth para ${user.email}:`, e.message);
         continue;
       }
     }
@@ -225,14 +225,14 @@ async function seed() {
       areaOrGrade: user.areaOrGrade,
       createdAt: new Date().toISOString(),
     });
-    console.log(`     📄 Perfil salvo no Firestore para ${user.name} (${user.unit})`);
+    console.log(`     Perfil salvo no Firestore para ${user.name} (${user.unit})`);
   }
 
-  console.log('\n🎉🎉🎉 BANCO DE DADOS RESETADO COM SUCESSO! 🎉🎉🎉');
+  console.log('\nBANCO DE DADOS RESETADO COM SUCESSO!');
   console.log('Nenhum grupo ou linha fictícia foi criada. Os professores orientadores darão abertura e nome aos grupos ao entrarem no sistema.');
 }
 
 seed().catch(err => {
-  console.error('❌ Erro fatal durante o reset e seed:', err);
+  console.error('Erro fatal durante o reset e seed:', err);
   process.exit(1);
 });
